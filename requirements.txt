@@ -1,0 +1,6 @@
+streamlit
+pandas
+plotly
+jinja2
+reportlab
+weasyprint

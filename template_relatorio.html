@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório de Ensaio Tecnológico</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm 15mm 20mm 15mm;
+            @bottom-right {
+                content: "Página " counter(page) " de " counter(pages);
+                font-size: 8pt;
+                color: #555;
+            }
+        }
+        body {
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            color: #222;
+            font-size: 10pt;
+            line-height: 1.4;
+        }
+        .header {
+            border-bottom: 2px solid #1a365d;
+            padding-bottom: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+        .header h1 {
+            margin: 0;
+            color: #1a365d;
+            font-size: 16pt;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .header .doc-id {
+            font-size: 9pt;
+            color: #4a5568;
+            font-weight: bold;
+        }
+        .section-title {
+            background-color: #f7fafc;
+            border-left: 4px solid #2b6cb0;
+            padding: 5px 10px;
+            font-size: 11pt;
+            font-weight: bold;
+            color: #2d3748;
+            margin-top: 15px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 12px;
+        }
+        th, td {
+            border: 1px solid #cbd5e0;
+            padding: 6px 8px;
+            text-align: left;
+            font-size: 9pt;
+        }
+        th {
+            background-color: #edf2f7;
+            color: #2d3748;
+            font-weight: bold;
+        }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .footer-signatures {
+            margin-top: 40px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .sig-block {
+            width: 45%;
+            text-align: center;
+            border-top: 1px solid #718096;
+            padding-top: 5px;
+            font-size: 9pt;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div>
+            <h1>Relatório de Caracterização e Controlo</h1>
+            <div style="font-size: 9pt; color: #718096; margin-top: 3px;">Controlo Tecnológico de Agregados e Betão</div>
+        </div>
+        <div class="doc-id">
+            N.º Ensaio: {{ dados.id_concreto }}<br>
+            Data Emissão: {{ data_emissao }}
+        </div>
+    </div>
+
+    <div class="section-title">1. Dados do Agregado Miúdo (Granulometria)</div>
+    <table>
+        <tr>
+            <th width="25%">Identificação da Amostra</th>
+            <td width="25%">{{ dados.identificacao_amostra }}</td>
+            <th width="25%">N.º de Série / Lote</th>
+            <td width="25%">{{ dados.id_granulometria }}</td>
+        </tr>
+        <tr>
+            <th>Data do Ensaio</th>
+            <td>{{ dados.data_ensaio }}</td>
+            <th>Módulo de Finura (MF)</th>
+            <td>{{ "%.2f"|format(dados.modulo_finura) if dados.modulo_finura else "-" }}</td>
+        </tr>
+        <tr>
+            <th>Dimensão Máxima Característica</th>
+            <td>{{ "%.2f mm"|format(dados.diametro_maximo) if dados.diametro_maximo else "-" }}</td>
+            <th>Massa Específica</th>
+            <td>{{ "%.2f kg/dm³"|format(dados.massa_especifica_agregado) if dados.massa_especifica_agregado else "-" }}</td>
+        </tr>
+    </table>
+
+    <div class="section-title">2. Parâmetros da Dosagem (Estado Fresco)</div>
+    <table>
+        <tr>
+            <th width="25%">Traço de Referência</th>
+            <td width="25%">{{ dados.tipo_traco }}</td>
+            <th width="25%">Data de Moldagem</th>
+            <td width="25%">{{ dados.data_moldagem }}</td>
+        </tr>
+        <tr>
+            <th>Proporção em Massa (1 : m)</th>
+            <td>1 : {{ "%.3f"|format(dados.proporcao_areia) }} : {{ "%.3f"|format(dados.proporcao_brita) }}</td>
+            <th>Teor de Argamassa (α)</th>
+            <td>{{ "%.1f %%"|format(dados.teor_argamassa) if dados.teor_argamassa else "-" }}</td>
+        </tr>
+        <tr>
+            <th>Relação Água/Cimento (a/c)</th>
+            <td>{{ "%.2f"|format(dados.relacao_agua_cimento) }}</td>
+            <th>Abatimento / Slump</th>
+            <td>{{ "%.0f mm"|format(dados.slump) if dados.slump else "-" }}</td>
+        </tr>
+        <tr>
+            <th>Massa Específica do Betão</th>
+            <td>{{ "%.2f kg/m³"|format(dados.massa_especifica_concreto) if dados.massa_especifica_concreto else "-" }}</td>
+            <th>Consumo de Cimento</th>
+            <td><strong>{{ "%.2f kg/m³"|format(dados.consumo_cimento_m3) if dados.consumo_cimento_m3 else "-" }}</strong></td>
+        </tr>
+    </table>
+
+    <div class="section-title">3. Controlo de Resistência Mecânica (Estado Endurecido)</div>
+    <table>
+        <thead>
+            <tr>
+                <th class="text-center" width="20%">Idade (dias)</th>
+                <th class="text-center" width="25%">Data de Ruptura</th>
+                <th class="text-right" width="25%">Resistência (MPa)</th>
+                <th width="30%">Observações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in rupturas %}
+            <tr>
+                <td class="text-center">{{ r.idade_dias }}</td>
+                <td class="text-center">{{ r.data_ruptura or "-" }}</td>
+                <td class="text-right"><strong>{{ "%.2f"|format(r.resistencia_mpa) }}</strong></td>
+                <td>Ruptura em prensa calibrada</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="4" class="text-center" style="color: #a0aec0;">Sem registos de ruptura cadastrados para este ensaio.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if dados.observacoes %}
+    <div class="section-title">4. Observações Gerais</div>
+    <p style="font-size: 9pt; margin: 4px 0;">{{ dados.observacoes }}</p>
+    {% endif %}
+
+    <div class="footer-signatures">
+        <div class="sig-block">
+            Técnico Responsável pela Moldagem
+        </div>
+        <div class="sig-block">
+            Controlo de Qualidade / Laboratório
+        </div>
+    </div>
+
+</body>
+</html>
