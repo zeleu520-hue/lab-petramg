@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GRANCON | Centro de Inteligência</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Paleta inspirada na referência executiva */
+        body { background-color: #1a1a24; color: #e2e8f0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .card { background-color: #272733; border: 1px solid #3f3f46; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5); }
+        .text-neon-green { color: #84cc16; }
+        .text-neon-yellow { color: #eab308; }
+        .bg-neon-green { background-color: #84cc16; }
+        .tab-btn.active { border-bottom: 3px solid #84cc16; color: #84cc16; font-weight: bold; }
+        .diagnostic-box { background: linear-gradient(145deg, #1e293b, #0f172a); border-left: 4px solid #84cc16; }
+        
+        /* Inputs estilizados */
+        .input-dark { background-color: #1f2937; border: 1px solid #4b5563; color: white; border-radius: 4px; padding: 4px 8px; font-size: 12px; width: 60px; }
+        .input-dark:focus { outline: none; border-color: #84cc16; }
+        .select-dark { background-color: #1f2937; border: 1px solid #4b5563; color: white; border-radius: 4px; padding: 6px; font-size: 14px; width: 100%; }
+        .select-dark:focus { outline: none; border-color: #84cc16; }
+    </style>
+</head>
+<body class="p-6 h-screen flex flex-col overflow-x-hidden">
+
+    <!-- CABEÇALHO E FILTROS GLOBAIS -->
+    <header class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-4xl font-black tracking-wider"><span class="text-neon-green">GRAN</span><span class="text-neon-yellow">CON</span></h1>
+            <p class="text-sm text-gray-400">DSA SOLUÇÕES | ENGENHARIA AVANÇADA</p>
+        </div>
+        
+        <div class="flex gap-4 items-end card py-3 px-6">
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Período de Análise</label>
+                <div class="flex gap-2">
+                    <input type="date" value="2026-05-01" class="select-dark w-auto">
+                    <input type="date" value="2026-05-31" class="select-dark w-auto">
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Tipo de Rocha</label>
+                <select class="select-dark min-w-[140px]">
+                    <option>Todas</option><option selected>Granito</option><option>Gnaisse</option><option>Calcário</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">Material / Fração</label>
+                <select class="select-dark min-w-[140px]">
+                    <option>Todos</option><option selected>Brita 1</option><option>Areia Média</option><option>Pó de Pedra</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <!-- NAVEGAÇÃO ABAS -->
+    <div class="flex border-b border-gray-700 mb-6 gap-8 px-4">
+        <button onclick="switchTab('granulometria')" id="btn-granulometria" class="tab-btn active pb-2 text-lg uppercase tracking-wide">
+            <i class="fa-solid fa-layer-group mr-2"></i> Granulometria
+        </button>
+        <button onclick="switchTab('concreto')" id="btn-concreto" class="tab-btn pb-2 text-lg text-gray-400 uppercase tracking-wide">
+            <i class="fa-solid fa-cube mr-2"></i> Concreto
+        </button>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MÓDULO 1: GRANULOMETRIA                    -->
+    <!-- ========================================== -->
+    <div id="tab-granulometria" class="flex-1">
+        <!-- KPIs Granulometria -->
+        <div class="grid grid-cols-5 gap-4 mb-6">
+            <div class="card border-l-4 border-neon-green">
+                <p class="text-xs text-gray-400 uppercase font-bold">Faixa Granulométrica</p>
+                <p class="text-xl font-black text-white mt-1">9.5 mm a 19 mm</p>
+            </div>
+            <div class="card">
+                <p class="text-xs text-gray-400 uppercase font-bold">Material Predominante</p>
+                <p class="text-xl font-black text-white mt-1">Brita 1</p>
+            </div>
+            <div class="card">
+                <p class="text-xs text-gray-400 uppercase font-bold">Massa Específica</p>
+                <p class="text-2xl font-black text-neon-yellow mt-1">2.65 <span class="text-sm text-gray-400">kg/dm³</span></p>
+            </div>
+            <div class="card">
+                <p class="text-xs text-gray-400 uppercase font-bold">Mat. Pulverulento</p>
+                <p class="text-2xl font-black text-white mt-1">0.8 <span class="text-sm text-gray-400">%</span></p>
+            </div>
+            <div class="card">
+                <p class="text-xs text-gray-400 uppercase font-bold">Abrasão L.A.</p>
+                <p class="text-2xl font-black text-white mt-1">22.5 <span class="text-sm text-gray-400">%</span></p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-6">
+            <!-- GRÁFICO + CONTROLES NORMATIVOS -->
+            <div class="card col-span-2 flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm text-gray-300 font-bold uppercase">Curva de Envelopamento NBR 7211</h3>
+                    <!-- Controles Dinâmicos da Norma -->
+                    <div class="flex gap-4 bg-gray-800 p-2 rounded border border-gray-700">
+                        <span class="text-xs text-gray-400 font-bold self-center">LIMITES (19mm):</span>
+                        <div class="flex items-center gap-1">
+                            <label class="text-[10px] text-gray-400">MÍN %</label>
+                            <input type="number" id="valMin" value="85" class="input-dark">
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <label class="text-[10px] text-gray-400">MÁX %</label>
+                            <input type="number" id="valMax" value="100" class="input-dark">
+                        </div>
+                        <button onclick="updateChart()" class="bg-neon-green text-black text-xs font-bold px-3 py-1 rounded hover:bg-lime-400 transition">Aplicar</button>
+                    </div>
+                </div>
+                <div class="relative flex-1 w-full min-h-[300px]"><canvas id="chartCurvaNbr"></canvas></div>
+            </div>
+
+            <!-- DIAGNÓSTICO (Sem citar IA) -->
+            <div class="flex flex-col gap-6">
+                <div class="card diagnostic-box p-6 flex-1">
+                    <h4 class="font-bold mb-4 text-white text-lg"><i class="fa-solid fa-file-signature text-neon-green mr-2"></i> Diagnóstico Normativo Automatizado</h4>
+                    <p class="text-sm text-gray-300 mb-4 text-justify">O laudo computacional atesta que o material processado apresenta distribuição granulométrica rigorosamente enquadrada dentro da zona ótima da norma vigente.</p>
+                    <ul class="text-sm text-gray-400 space-y-3">
+                        <li class="flex items-start"><i class="fa-solid fa-microscope text-neon-green mt-1 mr-2"></i> <span><b>Teor de Pulverulentos (0.8%):</b> Encontra-se abaixo do limite crítico para concretos estruturais, garantindo aderência perfeita na zona de transição pasta-agregado.</span></li>
+                        <li class="flex items-start"><i class="fa-solid fa-hammer text-neon-green mt-1 mr-2"></i> <span><b>Abrasão Los Angeles (22.5%):</b> O desgaste mecânico avaliado para a litologia Granito confere alta tenacidade e resistência à degradação durante a betoneira.</span></li>
+                        <li class="flex items-start"><i class="fa-solid fa-chart-line text-neon-green mt-1 mr-2"></i> <span><b>Empacotamento:</b> O esqueleto granular minimiza o índice de vazios, otimizando o consumo futuro de aglomerante.</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MÓDULO 2: CONCRETO                         -->
+    <!-- ========================================== -->
+    <div id="tab-concreto" class="flex-1 hidden">
+        <!-- KPIs Concreto (Inerentes + Agregados) -->
+        <div class="grid grid-cols-6 gap-4 mb-6">
+            <div class="card border-l-4 border-neon-yellow">
+                <p class="text-xs text-gray-400 uppercase font-bold">Traço Base</p>
+                <p class="text-lg font-black text-white mt-1">1 : 2.2 : 3.1</p>
+            </div>
+            <div class="card">
+                <p class="text-xs text-gray-400 uppercase font-bold">Slump</p>
+                <p class="text-2xl font-black text-neon-green mt-1">140 <span class="text-sm text-gray-400">mm</span></p>
+            </div>
+            <div class="card">
+                <p class="text-xs text-gray-400 uppercase font-bold">Relação A/C</p>
+                <p class="text-2xl font-black text-white mt-1">0.45</p>
+            </div>
+            <div class="card">
+                <p class="text-xs text-gray-400 uppercase font-bold">Aditivo</p>
+                <p class="text-2xl font-black text-white mt-1">0.8 <span class="text-sm text-gray-400">%</span></p>
+            </div>
+            <div class="card">
+                <p class="text-xs text-gray-400 uppercase font-bold">Rocha / Mat.</p>
+                <p class="text-sm font-black text-white mt-1">Granito<br><span class="text-neon-yellow">Brita 1</span></p>
+            </div>
+            <div class="card">
+                <p class="text-xs text-gray-400 uppercase font-bold">Abrasão (Agregado)</p>
+                <p class="text-2xl font-black text-white mt-1">22.5 <span class="text-sm text-gray-400">%</span></p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-6">
+            <!-- GRÁFICO RESISTÊNCIA -->
+            <div class="card col-span-2">
+                <h3 class="text-sm text-gray-300 font-bold mb-4 uppercase">Evolução Fck (Rompimento CPs)</h3>
+                <div class="relative h-72 w-full"><canvas id="chartFck"></canvas></div>
+            </div>
+            
+            <!-- MIX E DIAGNÓSTICO -->
+            <div class="flex flex-col gap-6">
+                <div class="card">
+                    <h3 class="text-sm text-gray-300 font-bold mb-2 uppercase">Proporção (Mix Design)</h3>
+                    <div class="relative h-40 w-full"><canvas id="chartMix"></canvas></div>
+                </div>
+                <div class="card diagnostic-box p-5 flex-1">
+                    <h4 class="font-bold mb-3 text-white"><i class="fa-solid fa-temperature-half text-neon-yellow mr-2"></i> Análise de Desempenho</h4>
+                    <p class="text-xs text-gray-300 text-justify">A integração do agregado graúdo (Granito, Abrasão 22.5%) com o aditivo plastificante (0.8%) compensou a hidratação acelerada. O Slump de 140mm manteve-se estável, indicando excelente reologia sem risco severo de exsudação. O Fck estimado aos 28 dias supera os 35 MPa de projeto.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- SCRIPTS                                    -->
+    <!-- ========================================== -->
+    <script>
+        // Lógica de Abas
+        function switchTab(tab) {
+            document.getElementById('tab-granulometria').classList.add('hidden');
+            document.getElementById('tab-concreto').classList.add('hidden');
+            document.getElementById('btn-granulometria').classList.remove('active', 'text-gray-400');
+            document.getElementById('btn-concreto').classList.remove('active', 'text-gray-400');
+            
+            if(tab === 'granulometria') {
+                document.getElementById('tab-granulometria').classList.remove('hidden');
+                document.getElementById('btn-granulometria').classList.add('active');
+                document.getElementById('btn-concreto').classList.add('text-gray-400');
+            } else {
+                document.getElementById('tab-concreto').classList.remove('hidden');
+                document.getElementById('btn-concreto').classList.add('active');
+                document.getElementById('btn-granulometria').classList.add('text-gray-400');
+            }
+        }
+
+        // Configuração Global Gráficos
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.font.family = "'Segoe UI', sans-serif";
+
+        // GRÁFICO 1: Curva Granulométrica
+        const ctxCurva = document.getElementById('chartCurvaNbr').getContext('2d');
+        let chartGranulometria = new Chart(ctxCurva, {
+            type: 'line',
+            data: {
+                labels: ['1.18mm', '2.36mm', '4.75mm', '9.5mm', '12.5mm', '19mm', '25mm'],
+                datasets: [
+                    {
+                        label: 'Limite Máximo Norma',
+                        data: [10, 30, 50, 85, 95, 100, 100], // O índice 5 (19mm) é o que controlamos no input
+                        borderColor: 'rgba(255, 255, 255, 0.3)',
+                        borderDash: [5, 5],
+                        fill: '+1', 
+                        backgroundColor: 'rgba(132, 204, 22, 0.05)',
+                        tension: 0.3,
+                        pointRadius: 0
+                    },
+                    {
+                        label: 'Limite Mínimo Norma',
+                        data: [0, 10, 20, 50, 70, 85, 100], // O índice 5 (19mm) é 85
+                        borderColor: 'rgba(255, 255, 255, 0.3)',
+                        borderDash: [5, 5],
+                        fill: false,
+                        tension: 0.3,
+                        pointRadius: 0
+                    },
+                    {
+                        label: 'Amostra Ensaiada',
+                        data: [2, 18, 35, 65, 82, 95, 100],
+                        borderColor: '#84cc16',
+                        backgroundColor: '#84cc16',
+                        borderWidth: 4,
+                        pointRadius: 6,
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: 'white' } } },
+                scales: {
+                    y: { grid: { color: '#334155' }, title: { display: true, text: '% Retida Acumulada', color: '#94a3b8' }, max: 105 },
+                    x: { grid: { color: '#334155' } }
+                }
+            }
+        });
+
+        // Função para atualizar os limites da Norma via Input
+        function updateChart() {
+            let minVal = parseFloat(document.getElementById('valMin').value);
+            let maxVal = parseFloat(document.getElementById('valMax').value);
+            
+            // Atualiza os pontos correspondentes à malha de 19mm (índice 5 no array)
+            chartGranulometria.data.datasets[1].data[5] = minVal; // Limite Mínimo
+            chartGranulometria.data.datasets[0].data[5] = maxVal; // Limite Máximo
+            chartGranulometria.update();
+        }
+
+        // GRÁFICO 2: Concreto - Fck
+        const ctxFck = document.getElementById('chartFck').getContext('2d');
+        new Chart(ctxFck, {
+            type: 'bar',
+            data: {
+                labels: ['Lote A', 'Lote B', 'Lote C', 'Lote D', 'Lote Atual'],
+                datasets: [{
+                    label: 'Fck Atingido (MPa)',
+                    data: [35.2, 36.1, 34.8, 35.9, 36.5],
+                    backgroundColor: '#84cc16',
+                    borderRadius: 4
+                }, {
+                    type: 'line',
+                    label: 'Fck de Projeto (Linha Base)',
+                    data: [35, 35, 35, 35, 35],
+                    borderColor: '#eab308',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: 'white' } } },
+                scales: { y: { grid: { color: '#334155' }, min: 30 } }
+            }
+        });
+
+        // GRÁFICO 3: Mix Design
+        const ctxMix = document.getElementById('chartMix').getContext('2d');
+        new Chart(ctxMix, {
+            type: 'doughnut',
+            data: {
+                labels: ['Cimento', 'Areia', 'Brita', 'Água', 'Aditivo'],
+                datasets: [{
+                    data: [15, 35, 42, 7, 1],
+                    backgroundColor: ['#eab308', '#f59e0b', '#84cc16', '#3b82f6', '#ef4444'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'right', labels: { boxWidth: 12, color: '#e2e8f0', font: { size: 10 } } } }
+            }
+        });
+    </script>
+</body>
+</html>
