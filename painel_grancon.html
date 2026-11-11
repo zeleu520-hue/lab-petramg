@@ -4,15 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GRANCON | Centro de Inteligência Integrado</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Supabase JS Library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
     <style>
         body { background-color: #1a1a24; color: #e2e8f0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .card { background-color: #272733; border: 1px solid #3f3f46; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5); }
@@ -27,9 +22,7 @@
         .select-dark:focus { outline: none; border-color: #84cc16; }
     </style>
 </head>
-<body class="p-6 h-screen flex flex-col overflow-x-hidden">
-
-    <!-- CABEÇALHO -->
+<body class="p-6 overflow-x-hidden">
     <header class="flex justify-between items-center mb-6">
         <div>
             <h1 class="text-4xl font-black tracking-wider"><span class="text-neon-green">GRAN</span><span class="text-neon-yellow">CON</span></h1>
@@ -40,17 +33,26 @@
             <div>
                 <label class="block text-xs text-gray-400 mb-1">Período de Análise</label>
                 <div class="flex gap-2">
-                    <input type="date" value="2026-01-01" class="select-dark w-auto">
-                    <input type="date" value="2026-12-31" class="select-dark w-auto">
+                    <input type="date" id="data-inicio" value="2019-01-01" class="select-dark w-auto">
+                    <input type="date" id="data-fim" value="2026-12-31" class="select-dark w-auto">
                 </div>
             </div>
             <div>
-                <button onclick="carregarDadosDoSupabase()" class="bg-neon-green text-black font-bold px-4 py-2 mt-4 rounded hover:bg-lime-400 transition"><i class="fa-solid fa-rotate-right mr-1"></i> Sincronizar DB</button>
+                <label class="block text-xs text-gray-400 mb-1">Filtro de Material</label>
+                <select id="filtro-rocha" class="select-dark min-w-[140px]">
+                    <option value="Todos">Todos</option>
+                    <option value="Areia Especial para Concreto">Areia Especial para Concreto</option>
+                    <option value="Brita #1">Brita #1</option>
+                    <option value="Brita #0">Brita #0</option>
+                    <option value="Bica Corrida">Bica Corrida</option>
+                </select>
+            </div>
+            <div>
+                <button onclick="carregarDadosDoSupabase()" class="bg-neon-green text-black font-bold px-4 py-2 mt-4 rounded hover:bg-lime-400 transition"><i class="fa-solid fa-search mr-1"></i> Buscar Dados</button>
             </div>
         </div>
     </header>
 
-    <!-- NAVEGAÇÃO ABAS -->
     <div class="flex border-b border-gray-700 mb-6 gap-8 px-4">
         <button onclick="switchTab('granulometria')" id="btn-granulometria" class="tab-btn active pb-2 text-lg uppercase tracking-wide">
             <i class="fa-solid fa-layer-group mr-2"></i> Granulometria
@@ -61,11 +63,11 @@
     </div>
 
     <!-- MÓDULO 1: GRANULOMETRIA -->
-    <div id="tab-granulometria" class="flex-1">
+    <div id="tab-granulometria">
         <div class="grid grid-cols-5 gap-4 mb-6">
             <div class="card border-l-4 border-neon-green">
-                <p class="text-xs text-gray-400 uppercase font-bold">Faixa Granulométrica</p>
-                <p class="text-xl font-black text-white mt-1">9.5 mm a 19 mm</p>
+                <p class="text-xs text-gray-400 uppercase font-bold">Último Lote</p>
+                <p id="kpi-g-nome" class="text-lg font-black text-white mt-1">-</p>
             </div>
             <div class="card">
                 <p class="text-xs text-gray-400 uppercase font-bold">Material Predominante</p>
@@ -73,15 +75,15 @@
             </div>
             <div class="card">
                 <p class="text-xs text-gray-400 uppercase font-bold">Massa Específica</p>
-                <p id="kpi-g-massa" class="text-2xl font-black text-neon-yellow mt-1">- <span class="text-sm text-gray-400">kg/dm³</span></p>
+                <p id="kpi-g-massa" class="text-2xl font-black text-neon-yellow mt-1">- <span class="text-sm text-gray-400">g/cm³</span></p>
             </div>
             <div class="card">
-                <p class="text-xs text-gray-400 uppercase font-bold">Mat. Pulverulento</p>
-                <p id="kpi-g-pulv" class="text-2xl font-black text-white mt-1">- <span class="text-sm text-gray-400">%</span></p>
+                <p class="text-xs text-gray-400 uppercase font-bold">Módulo de Finura</p>
+                <p id="kpi-g-mf" class="text-2xl font-black text-white mt-1">-</p>
             </div>
             <div class="card">
-                <p class="text-xs text-gray-400 uppercase font-bold">Abrasão L.A.</p>
-                <p id="kpi-g-abr" class="text-2xl font-black text-white mt-1">- <span class="text-sm text-gray-400">%</span></p>
+                <p class="text-xs text-gray-400 uppercase font-bold">DMC</p>
+                <p id="kpi-g-dmc" class="text-2xl font-black text-white mt-1">- <span class="text-sm text-gray-400">mm</span></p>
             </div>
         </div>
 
@@ -107,12 +109,10 @@
 
             <div class="flex flex-col gap-6">
                 <div class="card diagnostic-box p-6 flex-1">
-                    <h4 class="font-bold mb-4 text-white text-lg"><i class="fa-solid fa-file-signature text-neon-green mr-2"></i> Diagnóstico Normativo Automatizado</h4>
-                    <p class="text-sm text-gray-300 mb-4 text-justify">O laudo computacional atesta que o material processado apresenta distribuição granulométrica rigorosamente enquadrada dentro da zona ótima da norma vigente.</p>
+                    <h4 class="font-bold mb-4 text-white text-lg"><i class="fa-solid fa-file-signature text-neon-green mr-2"></i> Diagnóstico Normativo</h4>
+                    <p class="text-sm text-gray-300 mb-4 text-justify">Os dados renderizados refletem as amostras registradas no sistema via LIMS.</p>
                     <ul class="text-sm text-gray-400 space-y-3">
-                        <li class="flex items-start"><i class="fa-solid fa-microscope text-neon-green mt-1 mr-2"></i> <span><b>Teor de Pulverulentos:</b> Encontra-se abaixo do limite crítico para concretos estruturais, garantindo aderência perfeita na zona de transição pasta-agregado.</span></li>
-                        <li class="flex items-start"><i class="fa-solid fa-hammer text-neon-green mt-1 mr-2"></i> <span><b>Abrasão Los Angeles:</b> O desgaste mecânico avaliado confere alta tenacidade e resistência à degradação durante a betoneira.</span></li>
-                        <li class="flex items-start"><i class="fa-solid fa-chart-line text-neon-green mt-1 mr-2"></i> <span><b>Empacotamento:</b> O esqueleto granular minimiza o índice de vazios, otimizando o consumo futuro de aglomerante.</span></li>
+                        <li class="flex items-start"><i class="fa-solid fa-microscope text-neon-green mt-1 mr-2"></i> <span id="diag-finura">Aguardando dados...</span></li>
                     </ul>
                 </div>
             </div>
@@ -120,14 +120,14 @@
     </div>
 
     <!-- MÓDULO 2: CONCRETO -->
-    <div id="tab-concreto" class="flex-1 hidden">
+    <div id="tab-concreto" class="hidden">
         <div class="grid grid-cols-6 gap-4 mb-6">
             <div class="card border-l-4 border-neon-yellow">
-                <p class="text-xs text-gray-400 uppercase font-bold">Traço Base</p>
-                <p id="kpi-c-traco" class="text-lg font-black text-white mt-1">-</p>
+                <p class="text-xs text-gray-400 uppercase font-bold">Lote Base</p>
+                <p id="kpi-c-traco" class="text-sm font-black text-white mt-1">-</p>
             </div>
             <div class="card">
-                <p class="text-xs text-gray-400 uppercase font-bold">Slump (Atual)</p>
+                <p class="text-xs text-gray-400 uppercase font-bold">Slump (Abatimento)</p>
                 <p id="kpi-c-slump" class="text-2xl font-black text-neon-green mt-1">- <span class="text-sm text-gray-400">mm</span></p>
             </div>
             <div class="card">
@@ -135,22 +135,22 @@
                 <p id="kpi-c-ac" class="text-2xl font-black text-white mt-1">-</p>
             </div>
             <div class="card">
-                <p class="text-xs text-gray-400 uppercase font-bold">Aditivo</p>
-                <p id="kpi-c-aditivo" class="text-2xl font-black text-white mt-1">- <span class="text-sm text-gray-400">%</span></p>
+                <p class="text-xs text-gray-400 uppercase font-bold">Num CPs</p>
+                <p id="kpi-c-cps" class="text-2xl font-black text-white mt-1">-</p>
             </div>
             <div class="card">
                 <p class="text-xs text-gray-400 uppercase font-bold">Rocha / Mat.</p>
-                <p id="kpi-c-rocha" class="text-sm font-black text-white mt-1">-<br><span class="text-neon-yellow">-</span></p>
+                <p id="kpi-c-rocha" class="text-sm font-black text-white mt-1">-</p>
             </div>
             <div class="card">
-                <p class="text-xs text-gray-400 uppercase font-bold">Abrasão (Agregado)</p>
-                <p id="kpi-c-abr" class="text-2xl font-black text-white mt-1">- <span class="text-sm text-gray-400">%</span></p>
+                <p class="text-xs text-gray-400 uppercase font-bold">Consumo (Cim)</p>
+                <p id="kpi-c-consumo" class="text-2xl font-black text-white mt-1">- <span class="text-sm text-gray-400">kg</span></p>
             </div>
         </div>
 
         <div class="grid grid-cols-3 gap-6">
             <div class="card col-span-2">
-                <h3 class="text-sm text-gray-300 font-bold mb-4 uppercase">Evolução Fck (Rompimento CPs)</h3>
+                <h3 class="text-sm text-gray-300 font-bold mb-4 uppercase">Evolução Fck (Rompimento CPs) do Período Filtrado</h3>
                 <div class="relative h-72 w-full"><canvas id="chartFck"></canvas></div>
             </div>
             
@@ -159,25 +159,22 @@
                     <h3 class="text-sm text-gray-300 font-bold mb-2 uppercase">Proporção (Mix Design do Lote)</h3>
                     <div class="relative h-40 w-full"><canvas id="chartMix"></canvas></div>
                 </div>
-                <div class="card diagnostic-box p-5 flex-1">
-                    <h4 class="font-bold mb-3 text-white"><i class="fa-solid fa-temperature-half text-neon-yellow mr-2"></i> Análise de Desempenho</h4>
-                    <p class="text-xs text-gray-300 text-justify">A integração do agregado graúdo com o aditivo plastificante compensou a hidratação acelerada. O Slump manteve-se estável, indicando excelente reologia sem risco severo de exsudação. O Fck atende rigorosamente a especificação de projeto estrutural.</p>
-                </div>
             </div>
         </div>
     </div>
 
-    <!-- ========================================== -->
-    <!-- LOGICA SUPABASE E GRÁFICOS                 -->
-    <!-- ========================================== -->
     <script>
-        // ⚠️ SUAS CHAVES DO SUPABASE ⚠️
-        const SUPABASE_URL = 'https://udpotarucqkpxpockinb.supabase.co';
-        const SUPABASE_ANON_KEY = 'EyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkcG90YXJ1Y3FrcHhwb2NraW5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMzNDM0ODQsImV4cCI6MjEwODkxOTQ4NH0.FwQDupgQmPQ4PYCC8Hrlw3a2gmosW6eCZxdgddtQy6c';
+        // =========================================================
+        // CONFIGURAÇÃO DO SUPABASE
+        // =========================================================
+        const SUPABASE_URL = 'SUA_URL_SUPABASE_AQUI';
+        const SUPABASE_ANON_KEY = 'SUA_CHAVE_SUPABASE_AQUI';
         
-        // Inicializa o Cliente Supabase
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+        // =========================================================
+        // CONTROLE DE ABAS E UI
+        // =========================================================
         function switchTab(tab) {
             document.getElementById('tab-granulometria').classList.add('hidden');
             document.getElementById('tab-concreto').classList.add('hidden');
@@ -195,18 +192,20 @@
             }
         }
 
+        // =========================================================
+        // INICIALIZAÇÃO DE GRÁFICOS (CHART.JS)
+        // =========================================================
         Chart.defaults.color = '#94a3b8';
         Chart.defaults.font.family = "'Segoe UI', sans-serif";
 
-        // Instanciação Inicial Vazia dos Gráficos
         let chartGranulometria = new Chart(document.getElementById('chartCurvaNbr').getContext('2d'), {
             type: 'line',
             data: {
-                labels: ['1.18mm', '2.36mm', '4.75mm', '9.5mm', '12.5mm', '19mm', '25mm'],
+                labels: ['1.18mm', '2.36mm', '4.75mm', '6.3mm', '9.5mm', '12.5mm', '19mm', '25mm'],
                 datasets: [
-                    { label: 'Limite Máximo Norma', data: [10, 30, 50, 85, 95, 100, 100], borderColor: 'rgba(255, 255, 255, 0.3)', borderDash: [5, 5], fill: '+1', backgroundColor: 'rgba(132, 204, 22, 0.05)', tension: 0.3, pointRadius: 0 },
-                    { label: 'Limite Mínimo Norma', data: [0, 10, 20, 50, 70, 85, 100], borderColor: 'rgba(255, 255, 255, 0.3)', borderDash: [5, 5], fill: false, tension: 0.3, pointRadius: 0 },
-                    { label: 'Amostra DB Supabase', data: [0,0,0,0,0,0,0], borderColor: '#84cc16', backgroundColor: '#84cc16', borderWidth: 4, pointRadius: 6, tension: 0.4 }
+                    { label: 'Limite Máximo Norma', data: [10, 30, 50, 70, 85, 95, 100, 100], borderColor: 'rgba(255, 255, 255, 0.3)', borderDash: [5, 5], fill: '+1', backgroundColor: 'rgba(132, 204, 22, 0.05)', tension: 0.3, pointRadius: 0 },
+                    { label: 'Limite Mínimo Norma', data: [0, 10, 20, 30, 50, 70, 85, 100], borderColor: 'rgba(255, 255, 255, 0.3)', borderDash: [5, 5], fill: false, tension: 0.3, pointRadius: 0 },
+                    { label: 'Amostra DB Supabase (Ret. Acumulada)', data: [0,0,0,0,0,0,0,0], borderColor: '#84cc16', backgroundColor: '#84cc16', borderWidth: 4, pointRadius: 6, tension: 0.4 }
                 ]
             },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: 'white' } } }, scales: { y: { max: 105 } } }
@@ -216,89 +215,123 @@
             type: 'bar',
             data: { labels: [], datasets: [
                 { label: 'Fck Atingido (MPa)', data: [], backgroundColor: '#84cc16', borderRadius: 4 },
-                { type: 'line', label: 'Fck Projeto', data: [], borderColor: '#eab308', borderWidth: 2, borderDash: [5,5], pointRadius: 0 }
+                { type: 'line', label: 'Fck Referência', data: [], borderColor: '#eab308', borderWidth: 2, borderDash: [5,5], pointRadius: 0 }
             ]},
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 25 } } }
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0 } } }
         });
 
         let chartMix = new Chart(document.getElementById('chartMix').getContext('2d'), {
             type: 'doughnut',
-            data: { labels: ['Cimento', 'Areia', 'Brita', 'Água', 'Aditivo'], datasets: [{ data: [0,0,0,0,0], backgroundColor: ['#eab308', '#f59e0b', '#84cc16', '#3b82f6', '#ef4444'], borderWidth: 0 }] },
+            data: { labels: ['Cimento', 'Areia', 'Brita', 'Água'], datasets: [{ data: [0,0,0,0], backgroundColor: ['#eab308', '#f59e0b', '#84cc16', '#3b82f6'], borderWidth: 0 }] },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
         });
 
         function updateNormaLimites() {
-            chartGranulometria.data.datasets[1].data[5] = parseFloat(document.getElementById('valMin').value);
-            chartGranulometria.data.datasets[0].data[5] = parseFloat(document.getElementById('valMax').value);
+            chartGranulometria.data.datasets[1].data[6] = parseFloat(document.getElementById('valMin').value);
+            chartGranulometria.data.datasets[0].data[6] = parseFloat(document.getElementById('valMax').value);
             chartGranulometria.update();
         }
 
-        // ==========================================
-        // MOTOR DE SINCRONIZAÇÃO COM O SUPABASE
-        // ==========================================
+        // =========================================================
+        // LÓGICA DE BUSCA DE DADOS NO SUPABASE
+        // =========================================================
         async function carregarDadosDoSupabase() {
             try {
-                document.getElementById('status-db').innerHTML = "<i class='fa-solid fa-rotate text-[10px] animate-spin'></i> Sincronizando...";
+                document.getElementById('status-db').innerHTML = "<i class='fa-solid fa-rotate text-[10px] animate-spin'></i> Buscando...";
                 
-                // 1. Busca Granulometria
-                const { data: dbGran, error: errGran } = await supabase.from('grancon_granulometria').select('*').order('data_ensaio', { ascending: true });
+                const dInicio = document.getElementById('data-inicio').value;
+                const dFim = document.getElementById('data-fim').value;
+                const matFiltro = document.getElementById('filtro-rocha').value;
+
+                // QUERY GRANULOMETRIA
+                let queryGran = supabase.from('ensaios_granulometria').select('*')
+                    .gte('data_ensaio', dInicio).lte('data_ensaio', dFim).order('data_ensaio', { ascending: true });
+                if (matFiltro !== 'Todos') queryGran = queryGran.eq('tipo_agregado', matFiltro);
+
+                const { data: dbGran, error: errGran } = await queryGran;
                 if(errGran) throw errGran;
 
                 if (dbGran && dbGran.length > 0) {
-                    const utimoLoteG = dbGran[dbGran.length - 1];
-                    // Atualiza KPIs
-                    document.getElementById('kpi-g-mat').innerText = utimoLoteG.material;
-                    document.getElementById('kpi-g-massa').innerHTML = utimoLoteG.massa_especifica + ' <span class="text-sm text-gray-400">kg/dm³</span>';
-                    document.getElementById('kpi-g-pulv').innerHTML = utimoLoteG.pulverulento + ' <span class="text-sm text-gray-400">%</span>';
-                    document.getElementById('kpi-g-abr').innerHTML = utimoLoteG.abrasao_la + ' <span class="text-sm text-gray-400">%</span>';
+                    const u = dbGran[dbGran.length - 1]; 
+                    document.getElementById('kpi-g-nome').innerText = u.nome_ensaio.split('|')[0];
+                    document.getElementById('kpi-g-mat').innerText = u.tipo_agregado || 'N/A';
+                    document.getElementById('kpi-g-massa').innerHTML = (u.massa_especifica_g_cm3 || 0) + ' <span class="text-sm text-gray-400">g/cm³</span>';
+                    document.getElementById('kpi-g-mf').innerText = u.modulo_finura || '0';
+                    document.getElementById('kpi-g-dmc').innerHTML = (u.dmc_mm || 0) + ' <span class="text-sm text-gray-400">mm</span>';
                     
-                    // Atualiza Gráfico Granulometria com o último lote inserido
-                    chartGranulometria.data.datasets[2].data = [utimoLoteG.pen_1_18, utimoLoteG.pen_2_36, utimoLoteG.pen_4_75, utimoLoteG.pen_9_5, utimoLoteG.pen_12_5, utimoLoteG.pen_19_0, utimoLoteG.pen_25_0];
+                    document.getElementById('diag-finura').innerHTML = `<b>Módulo de Finura calculado:</b> ${u.modulo_finura}. A amostra apresenta DMC de ${u.dmc_mm}mm.`;
+
+                    // Calcula acumulada para o grafico
+                    let pens = JSON.parse(u.dados_peneiramento || '{}');
+                    let total = u.massa_total_g || 1;
+                    let seq = ['75', '63', '50', '37.5', '31.5', '25', '19', '12.5', '9.5', '6.3', '4.75', '2.36', '1.18', '0.6', '0.3', '0.15', '0.075', 'fundo'];
+                    let chavesGrafico = ['1.18', '2.36', '4.75', '6.3', '9.5', '12.5', '19', '25'];
+                    let acumulado = 0;
+                    let mapaAcum = {};
+                    
+                    for(let k of seq) {
+                        let massa = parseFloat(pens[k] || 0);
+                        acumulado += (massa/total)*100;
+                        mapaAcum[k] = acumulado;
+                    }
+                    
+                    let plotData = chavesGrafico.map(k => mapaAcum[k] || 0);
+                    chartGranulometria.data.datasets[2].data = plotData;
+                    chartGranulometria.update();
+                } else {
+                    document.getElementById('kpi-g-nome').innerText = "Nenhum Ensaio";
+                    chartGranulometria.data.datasets[2].data = [0,0,0,0,0,0,0,0];
                     chartGranulometria.update();
                 }
 
-                // 2. Busca Concreto
-                const { data: dbConc, error: errConc } = await supabase.from('grancon_concreto').select('*').order('data_ensaio', { ascending: true });
+                // QUERY CONCRETO
+                let queryConc = supabase.from('ensaios_concreto').select('*')
+                    .gte('data_moldagem', dInicio).lte('data_moldagem', dFim).order('data_moldagem', { ascending: true });
+                if (matFiltro !== 'Todos') queryConc = queryConc.eq('tipo_material', matFiltro);
+
+                const { data: dbConc, error: errConc } = await queryConc;
                 if(errConc) throw errConc;
 
                 if (dbConc && dbConc.length > 0) {
-                    const utimoLoteC = dbConc[dbConc.length - 1];
-                    // Atualiza KPIs
-                    document.getElementById('kpi-c-traco').innerText = utimoLoteC.traco_base;
-                    document.getElementById('kpi-c-slump').innerHTML = utimoLoteC.slump + ' <span class="text-sm text-gray-400">mm</span>';
-                    document.getElementById('kpi-c-ac').innerText = utimoLoteC.relacao_ac;
-                    document.getElementById('kpi-c-aditivo').innerHTML = utimoLoteC.aditivo_pct + ' <span class="text-sm text-gray-400">%</span>';
-                    document.getElementById('kpi-c-rocha').innerHTML = utimoLoteC.rocha_agregado + '<br><span class="text-neon-yellow">' + utimoLoteC.mat_agregado + '</span>';
-                    document.getElementById('kpi-c-abr').innerHTML = utimoLoteC.abrasao_agregado + ' <span class="text-sm text-gray-400">%</span>';
+                    const uc = dbConc[dbConc.length - 1];
+                    document.getElementById('kpi-c-traco').innerText = uc.tipo_traco + "\\n(" + uc.traco_proporcao + ")";
+                    document.getElementById('kpi-c-slump').innerHTML = uc.abatimento_mm + ' <span class="text-sm text-gray-400">mm</span>';
+                    document.getElementById('kpi-c-ac').innerText = uc.relacao_a_c;
+                    document.getElementById('kpi-c-cps').innerText = uc.num_cps;
+                    document.getElementById('kpi-c-rocha').innerText = uc.tipo_material;
+                    document.getElementById('kpi-c-consumo').innerHTML = uc.consumo_cimento_kg_m3 + ' <span class="text-sm text-gray-400">kg</span>';
                     
-                    // Atualiza Gráfico Donut Mix
-                    chartMix.data.datasets[0].data = [utimoLoteC.mix_cimento, utimoLoteC.mix_areia, utimoLoteC.mix_brita, utimoLoteC.mix_agua, utimoLoteC.mix_aditivo];
+                    chartMix.data.datasets[0].data = [uc.cimento_kg, (uc.agregado_miudo_1_kg + uc.agregado_miudo_2_kg), uc.brita_1_kg, uc.agua_kg];
                     chartMix.update();
 
-                    // Atualiza Gráfico de Barras Histórico de Fck
                     const labels = [];
                     const fckReais = [];
                     const fckProjetos = [];
                     dbConc.forEach(lote => {
-                        labels.push(lote.identificacao);
-                        fckReais.push(lote.fck_atingido);
-                        fckProjetos.push(lote.fck_projeto);
+                        labels.push(lote.data_moldagem);
+                        fckReais.push(lote.resistencia_media_mpa || 0);
+                        fckProjetos.push(lote.tipo_traco.includes("Rico") ? 30 : (lote.tipo_traco.includes("Médio") ? 25 : 20));
                     });
                     
                     chartFck.data.labels = labels;
                     chartFck.data.datasets[0].data = fckReais;
                     chartFck.data.datasets[1].data = fckProjetos;
                     chartFck.update();
+                } else {
+                    document.getElementById('kpi-c-traco').innerText = "Nenhum Lote Encontrado";
+                    chartFck.data.labels = [];
+                    chartFck.data.datasets[0].data = [];
+                    chartFck.data.datasets[1].data = [];
+                    chartFck.update();
                 }
 
                 document.getElementById('status-db').innerHTML = "<i class='fa-solid fa-circle text-[10px]'></i> Online";
             } catch (error) {
-                console.error("Erro Supabase:", error);
-                document.getElementById('status-db').innerHTML = "<i class='fa-solid fa-triangle-exclamation text-red-500 text-[10px]'></i> RLS Bloqueado ou Erro";
+                console.error(error);
+                document.getElementById('status-db').innerHTML = "<i class='fa-solid fa-triangle-exclamation text-red-500 text-[10px]'></i> Erro na Conexão";
             }
         }
 
-        // Inicia a carga de dados assim que a tela abre
         window.onload = carregarDadosDoSupabase;
     </script>
 </body>
