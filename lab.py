@@ -5,6 +5,8 @@ import json
 import io
 import re
 from datetime import datetime
+import matplotlib
+matplotlib.use('Agg') # Evita avisos do matplotlib rodando em servidores web
 import matplotlib.pyplot as plt
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
@@ -16,48 +18,88 @@ from supabase import create_client, Client
 # =========================================================
 # 1. CONFIGURAÇÃO DA PÁGINA E SUPABASE
 # =========================================================
-st.set_page_config(page_title="GranCon | LIMS Master", layout="wide")
+st.set_page_config(page_title="GRANCON | LIMS Master", layout="wide", initial_sidebar_state="collapsed")
 
-# ATENÇÃO: Insira sua chave real aqui
+# ATENÇÃO: Insira a sua chave real abaixo!
 SUPABASE_URL = "https://udpotarucqkpxpockinb.supabase.co"
 SUPABASE_KEY = "SUA_CHAVE_AQUI" 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # =========================================================
-# 2. INJEÇÃO DE CSS (CONTRASTE E MENUS)
+# 2. MEGA INJEÇÃO DE CSS (TRANSFORMA O STREAMLIT NO LIMS MASTER)
 # =========================================================
 st.markdown("""
     <style>
-    div[data-baseweb="popover"] ul, div[data-baseweb="menu"] ul, ul[role="listbox"] {
-        background-color: #0F172A !important;
+    .stApp { background-color: #1a1a24; }
+    header { visibility: hidden; }
+    .stMarkdown, .stText, p, label { color: #e2e8f0 !important; }
+    h1, h2, h3, h4, h5, h6 { color: #ffffff !important; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    
+    button[data-baseweb="tab"] {
+        background-color: transparent !important;
+        color: #94a3b8 !important;
+        font-size: 1.1rem !important;
+        text-transform: uppercase;
+        font-weight: 600;
+        border: none !important;
+        padding-bottom: 10px !important;
     }
-    div[data-baseweb="popover"] li, div[data-baseweb="menu"] li, ul[role="listbox"] li {
-        color: #FFFFFF !important;
-        font-size: 15px !important;
+    button[aria-selected="true"] {
+        color: #84cc16 !important;
+        border-bottom: 3px solid #84cc16 !important;
     }
-    div[data-baseweb="popover"] li:hover, div[data-baseweb="menu"] li:hover, ul[role="listbox"] li:hover {
-        background-color: #0284C7 !important;
-        color: #FFFFFF !important;
+    
+    div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="base-input"] {
+        background-color: #1f2937 !important;
+        border: 1px solid #3f3f46 !important;
+        border-radius: 6px !important;
+    }
+    div[data-baseweb="input"]:focus-within, div[data-baseweb="select"]:focus-within {
+        border-color: #84cc16 !important;
     }
     div[data-baseweb="input"] input, div[data-baseweb="base-input"] input {
-        color: #FFFFFF !important; 
-        -webkit-text-fill-color: #FFFFFF !important;
+        color: #ffffff !important;
+        -webkit-text-fill-color: #ffffff !important;
         font-weight: bold !important;
         font-size: 16px !important;
     }
-    div[data-baseweb="input"] {
-        background-color: #1E293B !important;
-        border: 1px solid #475569 !important;
+    
+    div[data-baseweb="popover"] ul, ul[role="listbox"] {
+        background-color: #0f172a !important;
+        border: 1px solid #3f3f46 !important;
     }
-    div[data-baseweb="input"]:focus-within {
-        border-color: #94A3B8 !important; 
+    ul[role="listbox"] li { color: #ffffff !important; font-size: 15px !important; }
+    ul[role="listbox"] li:hover { background-color: #0284c7 !important; color: #ffffff !important; }
+    
+    button[kind="primary"] {
+        background-color: #84cc16 !important;
+        color: #000000 !important;
+        font-weight: 900 !important;
+        border: none !important;
+        border-radius: 6px !important;
     }
-    .peneira-label {
-        margin-top: 10px; 
-        font-weight: bold; 
-        color: #E2E8F0; 
+    button[kind="primary"]:hover { background-color: #65a30d !important; }
+    
+    button[kind="secondary"] {
+        background-color: #272733 !important;
+        color: #e2e8f0 !important;
+        border: 1px solid #4b5563 !important;
+        border-radius: 6px !important;
+    }
+    button[kind="secondary"]:hover {
+        border-color: #84cc16 !important;
+        color: #84cc16 !important;
     }
     </style>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+    <div style='margin-top: -50px; margin-bottom: 30px;'>
+        <h1 style='font-size: 2.5rem; font-weight: 900; letter-spacing: 2px; margin-bottom: 0;'>
+            <span style='color: #84cc16;'>GRAN</span><span style='color: #eab308;'>CON</span>
+        </h1>
+        <p style='color: #94a3b8; font-size: 0.9rem; margin-top: -10px;'>DSA SOLUÇÕES | LIMS MASTER</p>
+    </div>
 """, unsafe_allow_html=True)
 
 # =========================================================
@@ -175,22 +217,15 @@ def gerar_pdf_moderno(dados_ensaio):
     return buffer
 
 # =========================================================
-# 4. INICIALIZAÇÃO DE ESTADOS (MEMÓRIA)
+# 4. INICIALIZAÇÃO DE ESTADOS E ABAS
 # =========================================================
-PENEIRAS_NORMA = [
-    "75", "63", "50", "37.5", "31.5", "25", "19", 
-    "12.5", "9.5", "6.3", "4.75", "2.36", "1.18", 
-    "0.6", "0.3", "0.15", "0.075", "fundo"
-]
+PENEIRAS_NORMA = ["75", "63", "50", "37.5", "31.5", "25", "19", "12.5", "9.5", "6.3", "4.75", "2.36", "1.18", "0.6", "0.3", "0.15", "0.075", "fundo"]
 
 if 'peneiras_ativas' not in st.session_state:
     st.session_state.peneiras_ativas = []
 if 'massas_retidas' not in st.session_state:
     st.session_state.massas_retidas = {}
 
-# =========================================================
-# 5. ESTRUTURA PRINCIPAL (ABAS)
-# =========================================================
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "🪨 Granulometria", 
     "🏗️ Concreto", 
@@ -204,12 +239,9 @@ with tab1:
     st.header("Lançamento de Granulometria")
     
     col_a, col_b, col_c = st.columns(3)
-    with col_a:
-        nome_ensaio = st.text_input("Nome da Amostra:")
-    with col_b:
-        tipo_agregado = st.selectbox("Tipo de Material:", ["Areia de Rio Média", "Areia Especial para Concreto", "Brita #0", "Brita #1", "Bica Corrida"])
-    with col_c:
-        data_ensaio = st.date_input("Data do Ensaio:")
+    with col_a: nome_ensaio = st.text_input("Nome da Amostra:")
+    with col_b: tipo_agregado = st.selectbox("Tipo de Material:", ["Areia de Rio Média", "Areia Especial para Concreto", "Brita #0", "Brita #1", "Bica Corrida"])
+    with col_c: data_ensaio = st.date_input("Data do Ensaio:")
 
     st.markdown("---")
     st.markdown("### Seleção Dinâmica de Peneiras")
@@ -217,11 +249,7 @@ with tab1:
     col_sel, col_btn = st.columns([4, 1])
     with col_sel:
         opcoes_disponiveis = [p for p in PENEIRAS_NORMA if p not in st.session_state.peneiras_ativas]
-        peneira_escolhida = st.selectbox(
-            "Adicione uma Peneira (Norma ABNT):", 
-            options=opcoes_disponiveis,
-            format_func=lambda x: f"{x} mm" if x != "fundo" else "Fundo"
-        )
+        peneira_escolhida = st.selectbox("Adicione uma Peneira (Norma ABNT):", options=opcoes_disponiveis, format_func=lambda x: f"{x} mm" if x != "fundo" else "Fundo")
     with col_btn:
         st.write(""); st.write("")
         if st.button("➕ Adicionar", use_container_width=True):
@@ -237,18 +265,13 @@ with tab1:
         st.info("Nenhuma peneira adicionada. Selecione as peneiras acima para montar o ensaio.")
     else:
         peneiras_ordenadas = sorted(st.session_state.peneiras_ativas, key=lambda x: PENEIRAS_NORMA.index(x))
-
         for pen in peneiras_ordenadas:
             c1, c2, c3 = st.columns([1, 2, 1])
             with c1:
                 label = f"{pen} mm" if pen != "fundo" else "Fundo"
-                st.markdown(f"<p class='peneira-label'>{label}</p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='margin-top: 10px; font-weight: bold; color: #84cc16;'>{label}</p>", unsafe_allow_html=True)
             with c2:
-                st.session_state.massas_retidas[pen] = st.number_input(
-                    f"Massa para {pen}", min_value=0.0, 
-                    value=float(st.session_state.massas_retidas.get(pen, 0.0)),
-                    step=0.1, key=f"massa_{pen}", label_visibility="collapsed"
-                )
+                st.session_state.massas_retidas[pen] = st.number_input(f"Massa para {pen}", min_value=0.0, value=float(st.session_state.massas_retidas.get(pen, 0.0)), step=0.1, key=f"massa_{pen}", label_visibility="collapsed")
             with c3:
                 if st.button("🗑️ Remover", key=f"del_{pen}"):
                     st.session_state.peneiras_ativas.remove(pen)
@@ -285,14 +308,10 @@ with tab2:
     st.header("Dosagem e Controle Tecnológico de Concreto")
     st.markdown("#### 1. Identificação da Mistura")
     col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        tipo_material_conc = st.text_input("Material / Referência:", value="AREIA PETRA")
-    with col2:
-        tipo_traco = st.selectbox("Tipo de Traço:", ["Traço Rico", "Traço Médio", "Traço Pobre"])
-    with col3:
-        traco_proporcao = st.text_input("Traço em Massa (1:Ar:Br):", placeholder="Ex: 1 : 3,5 : 2,250")
-    with col4:
-        data_moldagem_conc = st.date_input("Data de Moldagem:")
+    with col1: tipo_material_conc = st.text_input("Material / Referência:", value="AREIA PETRA")
+    with col2: tipo_traco = st.selectbox("Tipo de Traço:", ["Traço Rico", "Traço Médio", "Traço Pobre"])
+    with col3: traco_proporcao = st.text_input("Traço em Massa (1:Ar:Br):", placeholder="Ex: 1 : 3,5 : 2,250")
+    with col4: data_moldagem_conc = st.date_input("Data de Moldagem:")
 
     st.divider()
     st.markdown("#### 2. Massas dos Materiais (kg)")
@@ -350,7 +369,7 @@ with tab2:
                 "resistencia_media_mpa": round(media_mpa, 2)
             }
             try:
-                supabase.table("ensaios_concreto").insert(dados_concreto).execute()
+                supabase.table("ensaios_concreto").upsert(dados_concreto).execute()
                 st.success(f"✅ Traço '{tipo_traco}' salvo com sucesso!")
             except Exception as e:
                 st.error(f"Erro ao salvar: {e}")
@@ -362,64 +381,29 @@ with tab3:
     st.header("Controle de Corpos de Prova (Prensa)")
     st.info("Módulo de prensagem em desenvolvimento...")
 
-# --- ABA 4: PAINEL ANALÍTICO (NOVO FRONT-END EMBUTIDO) ---
+# --- ABA 4: PAINEL ANALÍTICO (FRONT-END HTML BLINDADO) ---
 with tab4:
-    # Injetando o código HTML do seu novo front-end, passando as chaves dinamicamente
     html_dashboard = f"""
     <!DOCTYPE html>
     <html lang="pt-BR">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>GRANCON | Centro de Inteligência Integrado</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
         <style>
-            body {{ background-color: #1a1a24; color: #e2e8f0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }}
-            .card {{ background-color: #272733; border: 1px solid #3f3f46; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5); }}
+            body {{ background-color: #1a1a24; color: #e2e8f0; font-family: 'Segoe UI', sans-serif; }}
+            .card {{ background-color: #272733; border: 1px solid #3f3f46; border-radius: 8px; padding: 20px; }}
             .text-neon-green {{ color: #84cc16; }}
             .text-neon-yellow {{ color: #eab308; }}
             .bg-neon-green {{ background-color: #84cc16; }}
-            .tab-btn.active {{ border-bottom: 3px solid #84cc16; color: #84cc16; font-weight: bold; }}
             .diagnostic-box {{ background: linear-gradient(145deg, #1e293b, #0f172a); border-left: 4px solid #84cc16; }}
-            .input-dark {{ background-color: #1f2937; border: 1px solid #4b5563; color: white; border-radius: 4px; padding: 4px 8px; font-size: 12px; width: 60px; }}
-            .input-dark:focus {{ outline: none; border-color: #84cc16; }}
-            .select-dark {{ background-color: #1f2937; border: 1px solid #4b5563; color: white; border-radius: 4px; padding: 6px; font-size: 14px; width: 100%; }}
-            .select-dark:focus {{ outline: none; border-color: #84cc16; }}
+            .input-dark, .select-dark {{ background-color: #1f2937; border: 1px solid #4b5563; color: white; border-radius: 4px; padding: 4px; }}
+            .tab-btn.active {{ border-bottom: 3px solid #84cc16; color: #84cc16; font-weight: bold; }}
         </style>
     </head>
-    <body class="p-6 overflow-x-hidden">
-        <header class="flex justify-between items-center mb-6">
-            <div>
-                <h1 class="text-4xl font-black tracking-wider"><span class="text-neon-green">GRAN</span><span class="text-neon-yellow">CON</span></h1>
-                <p class="text-sm text-gray-400">DSA SOLUÇÕES | SUPABASE CONNECTED <span id="status-db" class="text-neon-green ml-2"><i class="fa-solid fa-circle text-[10px]"></i> Conectando...</span></p>
-            </div>
-            
-            <div class="flex gap-4 items-end card py-3 px-6">
-                <div>
-                    <label class="block text-xs text-gray-400 mb-1">Período de Análise</label>
-                    <div class="flex gap-2">
-                        <input type="date" id="data-inicio" value="2019-01-01" class="select-dark w-auto">
-                        <input type="date" id="data-fim" value="2026-12-31" class="select-dark w-auto">
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-xs text-gray-400 mb-1">Filtro de Material</label>
-                    <select id="filtro-rocha" class="select-dark min-w-[140px]">
-                        <option value="Todos">Todos</option>
-                        <option value="Areia Especial para Concreto">Areia Especial para Concreto</option>
-                        <option value="Brita #1">Brita #1</option>
-                        <option value="Brita #0">Brita #0</option>
-                    </select>
-                </div>
-                <div>
-                    <button onclick="carregarDadosDoSupabase()" class="bg-neon-green text-black font-bold px-4 py-2 mt-4 rounded hover:bg-lime-400 transition"><i class="fa-solid fa-search mr-1"></i> Buscar Dados</button>
-                </div>
-            </div>
-        </header>
-
+    <body class="p-6">
         <div class="flex border-b border-gray-700 mb-6 gap-8 px-4">
             <button onclick="switchTab('granulometria')" id="btn-granulometria" class="tab-btn active pb-2 text-lg uppercase tracking-wide">
                 <i class="fa-solid fa-layer-group mr-2"></i> Granulometria
@@ -429,111 +413,69 @@ with tab4:
             </button>
         </div>
 
-        <!-- MÓDULO 1: GRANULOMETRIA -->
-        <div id="tab-granulometria">
-            <div class="grid grid-cols-5 gap-4 mb-6">
-                <div class="card border-l-4 border-neon-green">
-                    <p class="text-xs text-gray-400 uppercase font-bold">Último Lote</p>
-                    <p id="kpi-g-nome" class="text-lg font-black text-white mt-1">-</p>
+        <div class="flex justify-between items-center mb-6">
+            <div class="flex gap-4 items-end card py-3 px-6 w-full">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Início</label>
+                    <input type="date" id="data-inicio" value="2019-01-01" class="select-dark">
                 </div>
-                <div class="card">
-                    <p class="text-xs text-gray-400 uppercase font-bold">Material Predominante</p>
-                    <p id="kpi-g-mat" class="text-xl font-black text-white mt-1">-</p>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Fim</label>
+                    <input type="date" id="data-fim" value="2026-12-31" class="select-dark">
                 </div>
-                <div class="card">
-                    <p class="text-xs text-gray-400 uppercase font-bold">Massa Específica</p>
-                    <p id="kpi-g-massa" class="text-2xl font-black text-neon-yellow mt-1">- <span class="text-sm text-gray-400">g/cm³</span></p>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Filtro de Material</label>
+                    <select id="filtro-rocha" class="select-dark">
+                        <option value="Todos">Todos</option>
+                        <option value="Areia Especial para Concreto">Areia Especial para Concreto</option>
+                        <option value="Areia de Rio Média">Areia de Rio Média</option>
+                        <option value="Brita #1">Brita #1</option>
+                        <option value="Brita #0">Brita #0</option>
+                        <option value="Bica Corrida">Bica Corrida</option>
+                    </select>
                 </div>
-                <div class="card">
-                    <p class="text-xs text-gray-400 uppercase font-bold">Módulo de Finura</p>
-                    <p id="kpi-g-mf" class="text-2xl font-black text-white mt-1">-</p>
-                </div>
-                <div class="card">
-                    <p class="text-xs text-gray-400 uppercase font-bold">DMC</p>
-                    <p id="kpi-g-dmc" class="text-2xl font-black text-white mt-1">- <span class="text-sm text-gray-400">mm</span></p>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-3 gap-6">
-                <div class="card col-span-2 flex flex-col">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-sm text-gray-300 font-bold uppercase">Curva de Envelopamento NBR 7211</h3>
-                        <div class="flex gap-4 bg-gray-800 p-2 rounded border border-gray-700">
-                            <span class="text-xs text-gray-400 font-bold self-center">LIMITES (19mm):</span>
-                            <div class="flex items-center gap-1">
-                                <label class="text-[10px] text-gray-400">MÍN %</label>
-                                <input type="number" id="valMin" value="85" class="input-dark">
-                            </div>
-                            <div class="flex items-center gap-1">
-                                <label class="text-[10px] text-gray-400">MÁX %</label>
-                                <input type="number" id="valMax" value="100" class="input-dark">
-                            </div>
-                            <button onclick="updateNormaLimites()" class="bg-neon-green text-black text-xs font-bold px-3 py-1 rounded hover:bg-lime-400 transition">Aplicar</button>
-                        </div>
-                    </div>
-                    <div class="relative flex-1 w-full min-h-[300px]"><canvas id="chartCurvaNbr"></canvas></div>
-                </div>
-
-                <div class="flex flex-col gap-6">
-                    <div class="card diagnostic-box p-6 flex-1">
-                        <h4 class="font-bold mb-4 text-white text-lg"><i class="fa-solid fa-file-signature text-neon-green mr-2"></i> Diagnóstico Normativo</h4>
-                        <p class="text-sm text-gray-300 mb-4 text-justify">Os dados renderizados refletem as amostras registradas no sistema via LIMS.</p>
-                        <ul class="text-sm text-gray-400 space-y-3">
-                            <li class="flex items-start"><i class="fa-solid fa-microscope text-neon-green mt-1 mr-2"></i> <span id="diag-finura">Aguardando dados...</span></li>
-                        </ul>
-                    </div>
-                </div>
+                <button onclick="carregarDadosDoSupabase()" class="bg-neon-green text-black font-bold px-4 py-2 rounded hover:bg-lime-400">Buscar Dados <span id="status-db"></span></button>
             </div>
         </div>
 
-        <!-- MÓDULO 2: CONCRETO -->
-        <div id="tab-concreto" class="hidden">
-            <div class="grid grid-cols-6 gap-4 mb-6">
-                <div class="card border-l-4 border-neon-yellow">
-                    <p class="text-xs text-gray-400 uppercase font-bold">Lote Base</p>
-                    <p id="kpi-c-traco" class="text-sm font-black text-white mt-1">-</p>
-                </div>
-                <div class="card">
-                    <p class="text-xs text-gray-400 uppercase font-bold">Slump (Abatimento)</p>
-                    <p id="kpi-c-slump" class="text-2xl font-black text-neon-green mt-1">- <span class="text-sm text-gray-400">mm</span></p>
-                </div>
-                <div class="card">
-                    <p class="text-xs text-gray-400 uppercase font-bold">Relação A/C</p>
-                    <p id="kpi-c-ac" class="text-2xl font-black text-white mt-1">-</p>
-                </div>
-                <div class="card">
-                    <p class="text-xs text-gray-400 uppercase font-bold">Num CPs</p>
-                    <p id="kpi-c-cps" class="text-2xl font-black text-white mt-1">-</p>
-                </div>
-                <div class="card">
-                    <p class="text-xs text-gray-400 uppercase font-bold">Rocha / Mat.</p>
-                    <p id="kpi-c-rocha" class="text-sm font-black text-white mt-1">-</p>
-                </div>
-                <div class="card">
-                    <p class="text-xs text-gray-400 uppercase font-bold">Consumo (Cim)</p>
-                    <p id="kpi-c-consumo" class="text-2xl font-black text-white mt-1">- <span class="text-sm text-gray-400">kg</span></p>
-                </div>
+        <!-- ABA HTML GRANULOMETRIA -->
+        <div id="tab-granulometria">
+            <div class="grid grid-cols-4 gap-4 mb-6">
+                <div class="card border-l-4 border-neon-green"><p class="text-xs text-gray-400 font-bold">Último Lote</p><p id="kpi-g-nome" class="text-lg font-black text-white mt-1">-</p></div>
+                <div class="card"><p class="text-xs text-gray-400 font-bold">Material Predominante</p><p id="kpi-g-mat" class="text-lg font-black text-white mt-1">-</p></div>
+                <div class="card"><p class="text-xs text-gray-400 font-bold">Módulo de Finura</p><p id="kpi-g-mf" class="text-2xl font-black text-white mt-1">-</p></div>
+                <div class="card"><p class="text-xs text-gray-400 font-bold">DMC</p><p id="kpi-g-dmc" class="text-2xl font-black text-white mt-1">- <span class="text-sm">mm</span></p></div>
             </div>
 
-            <div class="grid grid-cols-3 gap-6">
-                <div class="card col-span-2">
-                    <h3 class="text-sm text-gray-300 font-bold mb-4 uppercase">Evolução Fck (Rompimento CPs) do Período Filtrado</h3>
-                    <div class="relative h-72 w-full"><canvas id="chartFck"></canvas></div>
-                </div>
-                
-                <div class="flex flex-col gap-6">
-                    <div class="card">
-                        <h3 class="text-sm text-gray-300 font-bold mb-2 uppercase">Proporção (Mix Design do Lote)</h3>
-                        <div class="relative h-40 w-full"><canvas id="chartMix"></canvas></div>
-                    </div>
-                </div>
+            <div class="grid grid-cols-2 gap-6">
+                <div class="card"><h3 class="text-sm font-bold mb-4">Curva NBR 7211</h3><div class="h-64"><canvas id="chartCurvaNbr"></canvas></div></div>
+                <div class="card diagnostic-box p-6"><h4 class="font-bold mb-4 text-white text-lg"><i class="fa-solid fa-file-signature text-neon-green mr-2"></i> Diagnóstico Normativo</h4>
+                <p id="diag-finura" class="text-sm text-gray-300">Aguardando busca de dados...</p></div>
+            </div>
+        </div>
+
+        <!-- ABA HTML CONCRETO -->
+        <div id="tab-concreto" class="hidden">
+            <div class="grid grid-cols-6 gap-4 mb-6">
+                <div class="card border-l-4 border-neon-yellow"><p class="text-xs text-gray-400 font-bold">Lote Base</p><p id="kpi-c-traco" class="text-sm font-black text-white mt-1">-</p></div>
+                <div class="card"><p class="text-xs text-gray-400 font-bold">Slump (mm)</p><p id="kpi-c-slump" class="text-2xl font-black text-neon-green mt-1">-</p></div>
+                <div class="card"><p class="text-xs text-gray-400 font-bold">Rel A/C</p><p id="kpi-c-ac" class="text-2xl font-black text-white mt-1">-</p></div>
+                <div class="card"><p class="text-xs text-gray-400 font-bold">Num CPs</p><p id="kpi-c-cps" class="text-2xl font-black text-white mt-1">-</p></div>
+                <div class="card"><p class="text-xs text-gray-400 font-bold">Material</p><p id="kpi-c-rocha" class="text-sm font-black text-white mt-1">-</p></div>
+                <div class="card"><p class="text-xs text-gray-400 font-bold">Cons. Cimento</p><p id="kpi-c-consumo" class="text-2xl font-black text-white mt-1">-</p></div>
+            </div>
+            <div class="grid grid-cols-2 gap-6">
+                <div class="card"><h3 class="text-sm font-bold mb-4">Evolução Fck (MPa)</h3><div class="h-64"><canvas id="chartFck"></canvas></div></div>
+                <div class="card"><h3 class="text-sm font-bold mb-4">Proporção Mix</h3><div class="h-64"><canvas id="chartMix"></canvas></div></div>
             </div>
         </div>
 
         <script>
             // Recebe chaves do Python dinamicamente
-            const supabase = window.supabase.createClient('{SUPABASE_URL}', '{SUPABASE_KEY}');
-
+            const supabaseUrl = "{SUPABASE_URL}";
+            const supabaseKey = "{SUPABASE_KEY}";
+            const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+            
             function switchTab(tab) {{
                 document.getElementById('tab-granulometria').classList.add('hidden');
                 document.getElementById('tab-concreto').classList.add('hidden');
@@ -552,138 +494,114 @@ with tab4:
             }}
 
             Chart.defaults.color = '#94a3b8';
-            Chart.defaults.font.family = "'Segoe UI', sans-serif";
-
-            let chartGranulometria = new Chart(document.getElementById('chartCurvaNbr').getContext('2d'), {{
+            let chartGran = new Chart(document.getElementById('chartCurvaNbr').getContext('2d'), {{
                 type: 'line',
-                data: {{
-                    labels: ['1.18mm', '2.36mm', '4.75mm', '6.3mm', '9.5mm', '12.5mm', '19mm', '25mm'],
-                    datasets: [
-                        {{ label: 'Limite Máximo Norma', data: [10, 30, 50, 70, 85, 95, 100, 100], borderColor: 'rgba(255, 255, 255, 0.3)', borderDash: [5, 5], fill: '+1', backgroundColor: 'rgba(132, 204, 22, 0.05)', tension: 0.3, pointRadius: 0 }},
-                        {{ label: 'Limite Mínimo Norma', data: [0, 10, 20, 30, 50, 70, 85, 100], borderColor: 'rgba(255, 255, 255, 0.3)', borderDash: [5, 5], fill: false, tension: 0.3, pointRadius: 0 }},
-                        {{ label: 'Amostra DB Supabase (Ret. Acumulada)', data: [0,0,0,0,0,0,0,0], borderColor: '#84cc16', backgroundColor: '#84cc16', borderWidth: 4, pointRadius: 6, tension: 0.4 }}
-                    ]
-                }},
-                options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ labels: {{ color: 'white' }} }} }}, scales: {{ y: {{ max: 105 }} }} }}
+                data: {{ labels: ['1.18', '2.36', '4.75', '6.3', '9.5', '12.5', '19', '25'], datasets: [
+                    {{ label: 'Amostra DB (Acumulada %)', data: [0,0,0,0,0,0,0,0], borderColor: '#84cc16', tension: 0.4 }}
+                ]}}, options: {{ responsive: true, maintainAspectRatio: false }}
             }});
-
+            
             let chartFck = new Chart(document.getElementById('chartFck').getContext('2d'), {{
-                type: 'bar',
-                data: {{ labels: [], datasets: [
-                    {{ label: 'Fck Atingido (MPa)', data: [], backgroundColor: '#84cc16', borderRadius: 4 }},
-                    {{ type: 'line', label: 'Fck Referência', data: [], borderColor: '#eab308', borderWidth: 2, borderDash: [5,5], pointRadius: 0 }}
-                ]}},
-                options: {{ responsive: true, maintainAspectRatio: false, scales: {{ y: {{ min: 0 }} }} }}
+                type: 'bar', data: {{ labels: [], datasets: [{{ label: 'Fck (MPa)', data: [], backgroundColor: '#84cc16' }}, {{ type: 'line', label: 'Projeto', data: [], borderColor: '#eab308' }}]}}, options: {{ responsive: true, maintainAspectRatio: false }}
             }});
 
             let chartMix = new Chart(document.getElementById('chartMix').getContext('2d'), {{
-                type: 'doughnut',
-                data: {{ labels: ['Cimento', 'Areia', 'Brita', 'Água'], datasets: [{{ data: [0,0,0,0], backgroundColor: ['#eab308', '#f59e0b', '#84cc16', '#3b82f6'], borderWidth: 0 }}] }},
-                options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ position: 'right' }} }} }}
+                type: 'doughnut', data: {{ labels: ['Cimento', 'Areia', 'Brita', 'Água'], datasets: [{{ data: [0,0,0,0], backgroundColor: ['#eab308', '#f59e0b', '#84cc16', '#3b82f6'], borderWidth: 0 }}] }}, options: {{ responsive: true, maintainAspectRatio: false }}
             }});
-
-            function updateNormaLimites() {{
-                chartGranulometria.data.datasets[1].data[6] = parseFloat(document.getElementById('valMin').value);
-                chartGranulometria.data.datasets[0].data[6] = parseFloat(document.getElementById('valMax').value);
-                chartGranulometria.update();
-            }}
 
             async function carregarDadosDoSupabase() {{
                 try {{
-                    document.getElementById('status-db').innerHTML = "<i class='fa-solid fa-rotate text-[10px] animate-spin'></i> Buscando...";
-                    
-                    const dInicio = document.getElementById('data-inicio').value;
-                    const dFim = document.getElementById('data-fim').value;
-                    const matFiltro = document.getElementById('filtro-rocha').value;
+                    document.getElementById('status-db').innerHTML = "(Buscando...)";
+                    const dI = document.getElementById('data-inicio').value;
+                    const dF = document.getElementById('data-fim').value;
+                    const mat = document.getElementById('filtro-rocha').value;
 
-                    // QUERY GRANULOMETRIA
-                    let queryGran = supabase.from('ensaios_granulometria').select('*')
-                        .gte('data_ensaio', dInicio).lte('data_ensaio', dFim).order('data_ensaio', {{ ascending: true }});
-                    if (matFiltro !== 'Todos') queryGran = queryGran.eq('tipo_agregado', matFiltro);
+                    // GRANULOMETRIA
+                    let qG = supabase.from('ensaios_granulometria').select('*').gte('data_ensaio', dI).lte('data_ensaio', dF);
+                    if(mat !== 'Todos') qG = qG.eq('tipo_agregado', mat);
+                    const {{ data: dbGran, error: errGran }} = await qG;
 
-                    const {{ data: dbGran, error: errGran }} = await queryGran;
-                    if(errGran) throw errGran;
-
-                    if (dbGran && dbGran.length > 0) {{
-                        const u = dbGran[dbGran.length - 1]; 
-                        document.getElementById('kpi-g-nome').innerText = u.nome_ensaio.split('|')[0];
-                        document.getElementById('kpi-g-mat').innerText = u.tipo_agregado || 'N/A';
-                        document.getElementById('kpi-g-massa').innerHTML = (u.massa_especifica_g_cm3 || 0) + ' <span class="text-sm text-gray-400">g/cm³</span>';
+                    if(dbGran && dbGran.length > 0) {{
+                        const u = dbGran[dbGran.length - 1];
+                        document.getElementById('kpi-g-nome').innerText = u.nome_ensaio ? u.nome_ensaio.split('|')[0] : '-';
+                        document.getElementById('kpi-g-mat').innerText = u.tipo_agregado || '-';
                         document.getElementById('kpi-g-mf').innerText = u.modulo_finura || '0';
-                        document.getElementById('kpi-g-dmc').innerHTML = (u.dmc_mm || 0) + ' <span class="text-sm text-gray-400">mm</span>';
-                        
+                        document.getElementById('kpi-g-dmc').innerText = u.dmc_mm || '0';
                         document.getElementById('diag-finura').innerHTML = `<b>Módulo de Finura calculado:</b> ${{u.modulo_finura}}. A amostra apresenta DMC de ${{u.dmc_mm}}mm.`;
 
-                        // Calcula acumulada para o grafico
-                        let pens = JSON.parse(u.dados_peneiramento || '{{}}');
+                        let pens = u.dados_peneiramento;
+                        if(typeof pens === 'string') pens = JSON.parse(pens);
+                        pens = pens || {{}};
+
                         let total = u.massa_total_g || 1;
                         let seq = ['75', '63', '50', '37.5', '31.5', '25', '19', '12.5', '9.5', '6.3', '4.75', '2.36', '1.18', '0.6', '0.3', '0.15', '0.075', 'fundo'];
                         let chavesGrafico = ['1.18', '2.36', '4.75', '6.3', '9.5', '12.5', '19', '25'];
-                        let acumulado = 0;
-                        let mapaAcum = {{}};
+                        let acumulado = 0; let mapaAcum = {{}};
                         
                         for(let k of seq) {{
-                            let massa = parseFloat(pens[k] || 0);
-                            acumulado += (massa/total)*100;
+                            let m = parseFloat(pens[k] || 0);
+                            acumulado += (m/total)*100;
                             mapaAcum[k] = acumulado;
                         }}
                         
-                        let plotData = chavesGrafico.map(k => mapaAcum[k] || 0);
-                        chartGranulometria.data.datasets[2].data = plotData;
-                        chartGranulometria.update();
+                        chartGran.data.datasets[0].data = chavesGrafico.map(k => mapaAcum[k] || 0);
+                        chartGran.update();
+                    }} else {{
+                        document.getElementById('kpi-g-nome').innerText = "Sem dados";
+                        document.getElementById('kpi-g-mat').innerText = "-";
+                        document.getElementById('kpi-g-mf').innerText = "-";
+                        document.getElementById('kpi-g-dmc').innerText = "-";
+                        document.getElementById('diag-finura').innerText = "Nenhum resultado de granulometria para este filtro.";
+                        chartGran.data.datasets[0].data = [0,0,0,0,0,0,0,0];
+                        chartGran.update();
                     }}
 
-                    // QUERY CONCRETO
-                    let queryConc = supabase.from('ensaios_concreto').select('*')
-                        .gte('data_moldagem', dInicio).lte('data_moldagem', dFim).order('data_moldagem', {{ ascending: true }});
-                    if (matFiltro !== 'Todos') queryConc = queryConc.eq('tipo_material', matFiltro);
+                    // CONCRETO
+                    let qC = supabase.from('ensaios_concreto').select('*').gte('data_moldagem', dI).lte('data_moldagem', dF);
+                    if(mat !== 'Todos') qC = qC.eq('tipo_material', mat);
+                    const {{ data: dbConc, error: errConc }} = await qC;
 
-                    const {{ data: dbConc, error: errConc }} = await queryConc;
-                    if(errConc) throw errConc;
-
-                    if (dbConc && dbConc.length > 0) {{
+                    if(dbConc && dbConc.length > 0) {{
                         const uc = dbConc[dbConc.length - 1];
-                        document.getElementById('kpi-c-traco').innerText = uc.tipo_traco + "\\n(" + uc.traco_proporcao + ")";
-                        document.getElementById('kpi-c-slump').innerHTML = uc.abatimento_mm + ' <span class="text-sm text-gray-400">mm</span>';
-                        document.getElementById('kpi-c-ac').innerText = uc.relacao_a_c;
-                        document.getElementById('kpi-c-cps').innerText = uc.num_cps;
-                        document.getElementById('kpi-c-rocha').innerText = uc.tipo_material;
-                        document.getElementById('kpi-c-consumo').innerHTML = uc.consumo_cimento_kg_m3 + ' <span class="text-sm text-gray-400">kg</span>';
+                        document.getElementById('kpi-c-traco').innerText = uc.tipo_traco;
+                        document.getElementById('kpi-c-slump').innerText = uc.abatimento_mm || 0;
+                        document.getElementById('kpi-c-ac').innerText = uc.relacao_a_c || '-';
+                        document.getElementById('kpi-c-cps').innerText = uc.num_cps || '0';
+                        document.getElementById('kpi-c-rocha').innerText = uc.tipo_material || '-';
+                        document.getElementById('kpi-c-consumo').innerText = uc.consumo_cimento_kg_m3 || '0';
                         
-                        chartMix.data.datasets[0].data = [uc.cimento_kg, (uc.agregado_miudo_1_kg + uc.agregado_miudo_2_kg), uc.brita_1_kg, uc.agua_kg];
+                        chartMix.data.datasets[0].data = [uc.cimento_kg||0, ((uc.agregado_miudo_1_kg||0)+(uc.agregado_miudo_2_kg||0)), uc.brita_1_kg||0, uc.agua_kg||0];
                         chartMix.update();
 
-                        const labels = [];
-                        const fckReais = [];
-                        const fckProjetos = [];
-                        dbConc.forEach(lote => {{
-                            labels.push(lote.data_moldagem);
-                            fckReais.push(lote.resistencia_media_mpa || 0);
-                            fckProjetos.push(lote.tipo_traco.includes("Rico") ? 30 : (lote.tipo_traco.includes("Médio") ? 25 : 20));
-                        }});
-                        
-                        chartFck.data.labels = labels;
-                        chartFck.data.datasets[0].data = fckReais;
-                        chartFck.data.datasets[1].data = fckProjetos;
+                        chartFck.data.labels = dbConc.map(x => x.data_moldagem);
+                        chartFck.data.datasets[0].data = dbConc.map(x => x.resistencia_media_mpa || 0);
+                        chartFck.data.datasets[1].data = dbConc.map(x => (x.tipo_traco && x.tipo_traco.includes("Rico")) ? 30 : 25);
+                        chartFck.update();
+                    }} else {{
+                        document.getElementById('kpi-c-traco').innerText = "Sem dados";
+                        document.getElementById('kpi-c-slump').innerText = "-";
+                        document.getElementById('kpi-c-ac').innerText = "-";
+                        document.getElementById('kpi-c-cps').innerText = "-";
+                        document.getElementById('kpi-c-rocha').innerText = "-";
+                        document.getElementById('kpi-c-consumo').innerText = "-";
+                        chartMix.data.datasets[0].data = [0,0,0,0];
+                        chartMix.update();
+                        chartFck.data.labels = []; chartFck.data.datasets[0].data = []; chartFck.data.datasets[1].data = [];
                         chartFck.update();
                     }}
 
-                    document.getElementById('status-db').innerHTML = "<i class='fa-solid fa-circle text-[10px]'></i> Online";
-                }} catch (error) {{
-                    console.error(error);
-                    document.getElementById('status-db').innerHTML = "<i class='fa-solid fa-triangle-exclamation text-red-500 text-[10px]'></i> Erro na Conexão";
+                    document.getElementById('status-db').innerHTML = "(OK)";
+                }} catch (e) {{ 
+                    document.getElementById('status-db').innerHTML = "(Erro ao conectar - verifique o periodo)"; 
+                    console.error("Erro interno no Painel:", e); 
                 }}
             }}
-
             window.onload = carregarDadosDoSupabase;
         </script>
     </body>
     </html>
     """
-    
-    # Renderiza o HTML dentro do Streamlit, ocupando a largura total
     components.html(html_dashboard, height=900, scrolling=True)
-
 
 # --- ABA 5: LAUDOS ---
 with tab5:
@@ -691,25 +609,14 @@ with tab5:
     try:
         response = supabase.table("ensaios_granulometria").select("id_ensaio, nome_ensaio, data_ensaio").execute()
         ensaios_db = response.data
-        
         if ensaios_db:
             opcoes_laudo = {f"{e['id_ensaio']} | {e['nome_ensaio']} ({e['data_ensaio']})": e['id_ensaio'] for e in ensaios_db}
             ensaio_selecionado = st.selectbox("Selecione o Ensaio para Gerar o Laudo:", list(opcoes_laudo.keys()))
-            
             if st.button("🖨️ GERAR LAUDO PDF", type="primary"):
                 id_alvo = opcoes_laudo[ensaio_selecionado]
                 dados_completos = supabase.table("ensaios_granulometria").select("*").eq("id_ensaio", id_alvo).execute().data[0]
-                
-                pdf_buffer = gerar_pdf_moderno(dados_completos)
-                
-                st.download_button(
-                    label="📥 Clique Aqui Para Baixar Seu PDF",
-                    data=pdf_buffer,
-                    file_name=f"Laudo_{id_alvo}.pdf",
-                    mime="application/pdf",
-                    use_container_width=True
-                )
+                st.download_button(label="📥 Clique Aqui Para Baixar Seu PDF", data=gerar_pdf_moderno(dados_completos), file_name=f"Laudo_{id_alvo}.pdf", mime="application/pdf", use_container_width=True)
         else:
-            st.warning("Nenhum ensaio encontrado no banco de dados para gerar laudo.")
+            st.warning("Nenhum ensaio encontrado no banco.")
     except Exception as e:
         st.error(f"Erro ao carregar ensaios: {e}")
