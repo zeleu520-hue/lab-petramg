@@ -165,10 +165,9 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
 # --- ABA 1: GRANULOMETRIA ---
 with tab1:
     st.header("Lançamento de Granulometria")
-    c_a, c_b, c_c, c_d = st.columns(4)
+    c_a, c_b, c_d = st.columns(3)
     with c_a: nome_ensaio = st.text_input("Nome da Amostra:")
     with c_b: tipo_agregado = st.selectbox("Tipo de Material:", ["Areia Especial para Concreto", "Areia Industrial Média", "Areia Industrial Fina", "Areia Industrial Fina Plus", "Brita #0", "Brita #1", "Bica Corrida"])
-    with c_c: cliente_dest = st.text_input("Cliente/Destino:", placeholder="Ex: Construtora X")
     with c_d: data_ensaio = st.date_input("Data do Ensaio:", format="DD/MM/YYYY")
 
     col_sel, col_btn = st.columns([4, 1])
@@ -210,7 +209,17 @@ with tab1:
                     dmc_calc = p; break
             if dmc_calc == 0 and peneiras_reais: dmc_calc = peneiras_reais[0]
 
-            dados = { "id_ensaio": f"GRAN-{datetime.now().strftime('%y%m%d%H%M%S')}", "data_ensaio": str(data_ensaio), "nome_ensaio": nome_ensaio, "tipo_agregado": tipo_agregado, "cliente_destino": cliente_dest, "massa_total_g": total_massa, "modulo_finura": round(mf_calc, 2), "dmc_mm": float(dmc_calc), "massa_especifica_g_cm3": massa_esp, "dados_peneiramento": json.dumps(pens) }
+            dados = { 
+                "id_ensaio": f"GRAN-{datetime.now().strftime('%y%m%d%H%M%S')}", 
+                "data_ensaio": str(data_ensaio), 
+                "nome_ensaio": nome_ensaio, 
+                "tipo_agregado": tipo_agregado, 
+                "massa_total_g": total_massa, 
+                "modulo_finura": round(mf_calc, 2), 
+                "dmc_mm": float(dmc_calc), 
+                "massa_especifica_g_cm3": massa_esp, 
+                "dados_peneiramento": json.dumps(pens) 
+            }
             try:
                 supabase.table("ensaios_granulometria").insert(dados).execute()
                 st.success(f"✅ Ensaio salvo! MF: {mf_calc:.2f} | DMC: {dmc_calc} mm")
@@ -324,7 +333,7 @@ with tab7:
                 
                 chave_botao = f"del_per_{periodo['id']}"
                 if st.button("🗑️ Excluir", key=chave_botao, help="Remover este intervalo da análise"):
-                    ids_para_remover.apt.rerun()
+       t.rerun()
             
         st.markdown("</div>", unsafe_allow_html=True)
 
