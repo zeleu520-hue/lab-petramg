@@ -1,4 +1,174 @@
- Construtora X")
+import streamlit as st
+import pandas as pd
+import numpy as np
+import json
+import io
+import urllib.parse
+import plotly.graph_objects as go
+import plotly.express as px
+from datetime import datetime, date, timedelta
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+from reportlab.lib.units import cm
+from reportlab.lib.enums import TA_JUSTIFY, TA_CENTER
+from supabase import create_client, Client
+
+# =========================================================
+# 1. CONFIGURAÇÃO E CONEXÃO SUPABASE
+# =========================================================
+st.set_page_config(page_title="GRANCON | LIMS Master", layout="wide", initial_sidebar_state="collapsed")
+
+SUPABASE_URL = "https://udpotarucqkpxpockinb.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkcG90YXJ1Y3FrcHhwb2NraW5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMzNDM0ODQsImV4cCI6MjEwODkxOTQ4NH0.FwQDupgQmPQ4PYCC8Hrlw3a2gmosW6eCZxdgddtQy6c" 
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# =========================================================
+# 2. CONSTANTES NORMATIVAS (ABNT NBR 7211)
+# =========================================================
+PENEIRAS_MESTRA = [75.0, 63.0, 50.0, 37.5, 31.5, 25.0, 19.0, 12.5, 9.5, 6.3, 4.75, 2.36, 1.18, 0.6, 0.3, 0.15, 0.075]
+
+LIMITES_NORMA = {
+    "Areia": {"9.5": (100,100), "4.75": (90,100), "2.36": (75,100), "1.18": (50,90), "0.6": (25,65), "0.3": (10,35), "0.15": (2,10)},
+    "Brita 0": {"19.0": (100,100), "12.5": (90,100), "9.5": (20,50), "4.75": (0,5), "2.36": (0,2)},
+    "Brita 1": {"37.5": (100,100), "25.0": (90,100), "19.0": (20,50), "9.5": (0,5), "4.75": (0,2)}
+}
+PENEIRAS_NORMA_LANCAMENTO = ["75", "63", "50", "37.5", "31.5", "25", "19", "12.5", "9.5", "6.3", "4.75", "2.36", "1.18", "0.6", "0.3", "0.15", "0.075", "fundo"]
+
+# =========================================================
+# 3. CSS GLOBAL
+# =========================================================
+st.markdown("""
+    <style>
+    .stApp { background-color: #0f172a; color: #f8fafc; font-family: 'Segoe UI', sans-serif; }
+    header { visibility: hidden; }
+    h1, h2, h3, h4 { color: #f8fafc !important; font-weight: 800 !important; }
+    .destaque-verde { color: #84cc16; }
+    .card { background-color: #1e293b; padding: 25px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 20px; border-top: 4px solid #84cc16; }
+    .parecer-tecnico { background-color: #1e293b; color: #e2e8f0; padding: 25px; border-radius: 8px; border-left: 6px solid #3b82f6; font-size: 1.10rem; line-height: 1.7; }
+    .texto-explicativo { color: #94a3b8; font-size: 1rem; margin-bottom: 20px; }
+    
+    button[data-baseweb="tab"] { background-color: transparent !important; color: #94a3b8 !important; font-size: 1rem !important; text-transform: uppercase; font-weight: 600; border: none !important; padding-bottom: 10px !important; }
+    button[aria-selected="true"] { color: #84cc16 !important; border-bottom: 3px solid #84cc16 !important; }
+    div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="base-input"] { background-color: #1f2937 !important; border: 1px solid #3f3f46 !important; border-radius: 6px !important; }
+    div[data-baseweb="input"]:focus-within, div[data-baseweb="select"]:focus-within { border-color: #84cc16 !important; }
+    div[data-baseweb="input"] input { color: #ffffff !important; font-weight: bold !important; font-size: 16px !important; }
+    button[kind="primary"] { background-color: #84cc16 !important; color: #000000 !important; font-weight: 900 !important; border: none !important; border-radius: 6px !important; }
+    
+    [data-testid="stMetricValue"] { font-size: 1.9rem !important; font-weight: 900 !important; color: #eab308 !important; }
+    [data-testid="stMetricLabel"] { font-size: 0.95rem !important; color: #94a3b8 !important; font-weight: 600;}
+    </style>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+    <div style='margin-top: -50px; margin-bottom: 30px;'>
+        <h1 style='font-size: 2.5rem; font-weight: 900; letter-spacing: 2px; margin-bottom: 0;'>
+            <span style='color: #84cc16;'>GRAN</span><span style='color: #eab308;'>CON</span>
+        </h1>
+        <p style='color: #94a3b8; font-size: 0.9rem; margin-top: -10px;'>DSA SOLUÇÕES | LIMS MASTER</p>
+    </div>
+""", unsafe_allow_html=True)
+
+# =========================================================
+# 4. EXTRAÇÃO DE DADOS GLOBAL
+# =========================================================
+@st.cache_data(ttl=60)
+def carregar_granulometria():
+    res = supabase.table("ensaios_granulometria").select("*").execute()
+    df = pd.DataFrame(res.data)
+    if not df.empty:
+        df['data_ensaio'] = pd.to_datetime(df['data_ensaio'])
+        df['modulo_finura'] = pd.to_numeric(df['modulo_finura'], errors='coerce').fillna(0)
+        df['dmc_mm'] = pd.to_numeric(df['dmc_mm'], errors='coerce').fillna(0)
+        df['Material_Real'] = df['tipo_agregado'].fillna("Desconhecido").apply(lambda x: str(x).strip())
+    return df
+
+@st.cache_data(ttl=60)
+def carregar_concreto():
+    res = supabase.table("ensaios_concreto").select("*").execute()
+    df = pd.DataFrame(res.data)
+    if not df.empty:
+        df['data_moldagem'] = pd.to_datetime(df['data_moldagem'])
+    return df
+
+df_gran = carregar_granulometria()
+df_conc = carregar_concreto()
+
+# =========================================================
+# 5. GERADOR DE LAUDO SIMPLES
+# =========================================================
+def gerar_relatorio_unificado(dados_concreto, lista_dados_granulometria):
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=2*cm, leftMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm)
+    elements, styles = [], getSampleStyleSheet()
+    title_style = ParagraphStyle('CustomTitle', parent=styles['Heading1'], fontSize=16, textColor=colors.HexColor("#1A365D"), alignment=TA_CENTER, spaceAfter=12)
+    subtitle_style = ParagraphStyle('CustomSubtitle', parent=styles['Heading2'], fontSize=12, textColor=colors.HexColor("#2B6CB0"), spaceBefore=10, spaceAfter=6)
+    
+    elements.append(Paragraph("LAUDO TÉCNICO INTEGRADO: CONCRETO E AGREGADOS", title_style))
+    elements.append(Spacer(1, 0.5*cm))
+    
+    info_concreto = [
+        ["Lote de Concreto:", dados_concreto.get('id_ensaio', '-'), "Data Moldagem:", dados_concreto.get('data_moldagem', '-')],
+        ["Referência:", dados_concreto.get('tipo_material', '-'), "Traço:", dados_concreto.get('traco_proporcao', '-')],
+        ["Fck Médio Obtido:", f"{dados_concreto.get('resistencia_media_mpa', 0)} MPa", "Slump:", f"{dados_concreto.get('abatimento_mm', 0)} mm"]
+    ]
+    t_conc = Table(info_concreto, colWidths=[4*cm, 4.5*cm, 3.5*cm, 4.5*cm])
+    t_conc.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#F7FAFC")), ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'), ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'), ('BOX', (0, 0), (-1, -1), 1, colors.HexColor("#CBD5E0")), ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0"))]))
+    elements.append(t_conc)
+    elements.append(Spacer(1, 1*cm))
+    
+    if lista_dados_granulometria:
+        elements.append(Paragraph("RASTREABILIDADE DE AGREGADOS VINCULADOS", subtitle_style))
+        for dg in lista_dados_granulometria:
+            info_g = f"<b>Material:</b> {dg.get('tipo_agregado')} | <b>Lote:</b> {dg.get('id_ensaio')} | <b>Módulo Finura:</b> {dg.get('modulo_finura')} | <b>DMC:</b> {dg.get('dmc_mm')} mm"
+            elements.append(Paragraph(info_g, styles['Normal']))
+            elements.append(Spacer(1, 0.3*cm))
+    else:
+        elements.append(Paragraph("<i>Nenhum agregado rastreável vinculado a este traço.</i>", styles['Normal']))
+        
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer
+
+# =========================================================
+# 6. INICIALIZAÇÃO DE ESTADOS PARA O GÊMEO DIGITAL
+# =========================================================
+if 'peneiras_ativas' not in st.session_state: st.session_state.peneiras_ativas = []
+if 'massas_retidas' not in st.session_state: st.session_state.massas_retidas = {}
+
+if 'lista_periodos_adv' not in st.session_state:
+    st.session_state.lista_periodos_adv = [
+        {"id": 0, "ini": date(2019, 1, 1), "fim": date(2019, 12, 31)},
+        {"id": 1, "ini": date(2020, 1, 1), "fim": date(2020, 12, 31)},
+        {"id": 2, "ini": date(2021, 1, 1), "fim": date(2021, 12, 31)},
+        {"id": 3, "ini": date(2022, 1, 1), "fim": date(2022, 12, 31)},
+        {"id": 4, "ini": date(2023, 1, 1), "fim": date(2023, 12, 31)},
+        {"id": 5, "ini": date(2024, 1, 1), "fim": date(2024, 12, 31)},
+        {"id": 6, "ini": date(2025, 1, 1), "fim": date(2025, 12, 31)},
+        {"id": 7, "ini": date(2026, 1, 1), "fim": date.today()},
+    ]
+if 'proximo_id_periodo' not in st.session_state: st.session_state.proximo_id_periodo = 8
+
+# =========================================================
+# 7. AS 7 ABAS DO SISTEMA
+# =========================================================
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+    "🪨 Granulometria", "🏗️ Concreto", "📈 Auditoria Simples", 
+    "🧪 Prensagem & QR", "📊 Painel Analítico", "📄 Laudos", 
+    "🧠 Inteligência (Gêmeo Digital)"
+])
+
+# --- ABA 1: GRANULOMETRIA ---
+with tab1:
+    st.header("Lançamento de Granulometria")
+    c_a, c_b, c_c, c_d = st.columns(4)
+    with c_a: nome_ensaio = st.text_input("Nome da Amostra:")
+    with c_b: tipo_agregado = st.selectbox("Tipo de Material:", ["Areia Especial para Concreto", "Areia Industrial Média", "Areia Industrial Fina", "Areia Industrial Fina Plus", "Brita #0", "Brita #1", "Bica Corrida"])
+    with c_c: cliente_dest = st.text_input("Cliente/Destino:", placeholder="Ex: Construtora X")
     with c_d: data_ensaio = st.date_input("Data do Ensaio:", format="DD/MM/YYYY")
 
     col_sel, col_btn = st.columns([4, 1])
@@ -104,7 +274,7 @@ with tab3: st.info("Utilize a Guia '🧠 Inteligência (Gêmeo Digital)' para an
 with tab4: st.info("Módulo em desenvolvimento.")
 with tab5: st.info("Consulte a Guia '🧠 Inteligência (Gêmeo Digital)' para os novos KPIs e Dashboards.")
 with tab6:
-    st.header("Emissão de Laudos (PDF Integrado)")
+    st.header("Emissão de Laudos Rápidos")
     if not df_conc.empty:
         opcoes_c = {f"{r['id_ensaio']} | {r['tipo_material']} ({r['data_moldagem'].strftime('%d/%m/%Y')})": r.to_dict() for _, r in df_conc.iterrows()}
         esc = st.selectbox("Selecione o Lote de Concreto:", list(opcoes_c.keys()))
@@ -115,16 +285,16 @@ with tab6:
             st.download_button("📥 Baixar Laudo Integrado", data=gerar_relatorio_unificado(dados_c_alvo, lista_agregados), file_name=f"Laudo_{dados_c_alvo['id_ensaio']}.pdf", mime="application/pdf")
 
 # =========================================================
-# --- ABA 7: INTELIGÊNCIA AVANÇADA E DOSSIÊ TÉCNICO ---
+# --- ABA 7: INTELIGÊNCIA AVANÇADA E DOSSIÊ TÉCNICO (GÊMEO DIGITAL & PDF) ---
 # =========================================================
 with tab7:
-    st.markdown("<h2>🧠 Investigação Técnica: <span class='destaque-verde'>Comparador Múltiplo</span></h2>", unsafe_allow_html=True)
+    st.markdown("<h2>🧠 Investigação Técnica: <span class='destaque-verde'>Gêmeo Digital Corporativo</span></h2>", unsafe_allow_html=True)
     
     if df_gran.empty:
         st.warning("Banco de Granulometria vazio.")
     else:
         st.markdown("<div class='card'>", unsafe_allow_html=True)
-        st.markdown("#### ⚙️ Configuração de Períodos")
+        st.markdown("#### ⚙️ Configuração de Períodos Amostrais")
         col_mat, col_btn_add = st.columns([3, 1])
         materiais_db_reais = sorted(list(df_gran['Material_Real'].dropna().unique()))
         
@@ -140,22 +310,22 @@ with tab7:
                 st.session_state.proximo_id_periodo += 1
                 st.rerun()
 
-         # REENDERIZAR OS INTERVALOS DA SESSÃO COM BOTÃO DE EXCLUIR
+        # REENDERIZAR OS INTERVALOS DA SESSÃO COM BOTÃO DE EXCLUIR
         ids_para_remover = []
         periodos_validados = []
         
-        # Cria colunas responsivas para os períodos
         cols_periodos = st.columns(4)
         for i, periodo in enumerate(st.session_state.lista_periodos_adv):
             with cols_periodos[i % 4]:
                 st.markdown(f"**📅 Intervalo {i+1}**")
                 
-                # Campos de data
                 d_ini = st.date_input("Início", value=periodo['ini'], format="DD/MM/YYYY", key=f"adv_ini_{periodo['id']}")
                 d_fim = st.date_input("Fim", value=periodo['fim'], format="DD/MM/YYYY", key=f"adv_fim_{periodo['id']}")
                 
-                # Botão de remover
                 if st.button("🗑️ Excluir", key=f"del_per_{periodo['id']}", help="Remover este intervalo da análise"):
+                    ids_para_remover.append(periodo['id'])
+                else:
+_{periodo['id']}", help="Remover este intervalo da análise"):
                     ids_para_remover.append(periodo['id'])
                 else:
                     # Se não for removido, salva as datas selecionadas
