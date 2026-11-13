@@ -21,7 +21,7 @@ from supabase import create_client, Client
 # =========================================================
 # 1. CONFIGURAÇÃO E CONEXÃO SUPABASE
 # =========================================================
-st.set_page_config(page_title="GRANCON | LIMS Master", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="GRANCON | DSA Soluções", layout="wide", initial_sidebar_state="collapsed")
 
 SUPABASE_URL = "https://udpotarucqkpxpockinb.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkcG90YXJ1Y3FrcHhwb2NraW5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMzNDM0ODQsImV4cCI6MjEwODkxOTQ4NH0.FwQDupgQmPQ4PYCC8Hrlw3a2gmosW6eCZxdgddtQy6c" 
