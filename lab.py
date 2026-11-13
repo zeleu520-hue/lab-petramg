@@ -50,6 +50,7 @@ st.markdown("""
     .destaque-verde { color: #84cc16; }
     .card { background-color: #1e293b; padding: 25px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 20px; border-top: 4px solid #84cc16; }
     .parecer-tecnico { background-color: #1e293b; color: #e2e8f0; padding: 25px; border-radius: 8px; border-left: 6px solid #3b82f6; font-size: 1.10rem; line-height: 1.7; }
+    .texto-explicativo { color: #94a3b8; font-size: 1rem; margin-bottom: 20px; }
     
     button[data-baseweb="tab"] { background-color: transparent !important; color: #94a3b8 !important; font-size: 1rem !important; text-transform: uppercase; font-weight: 600; border: none !important; padding-bottom: 10px !important; }
     button[aria-selected="true"] { color: #84cc16 !important; border-bottom: 3px solid #84cc16 !important; }
@@ -57,6 +58,9 @@ st.markdown("""
     div[data-baseweb="input"]:focus-within, div[data-baseweb="select"]:focus-within { border-color: #84cc16 !important; }
     div[data-baseweb="input"] input { color: #ffffff !important; font-weight: bold !important; font-size: 16px !important; }
     button[kind="primary"] { background-color: #84cc16 !important; color: #000000 !important; font-weight: 900 !important; border: none !important; border-radius: 6px !important; }
+    
+    [data-testid="stMetricValue"] { font-size: 1.9rem !important; font-weight: 900 !important; color: #eab308 !important; }
+    [data-testid="stMetricLabel"] { font-size: 0.95rem !important; color: #94a3b8 !important; font-weight: 600;}
     </style>
 """, unsafe_allow_html=True)
 
@@ -95,7 +99,7 @@ df_gran = carregar_granulometria()
 df_conc = carregar_concreto()
 
 # =========================================================
-# 5. GERADOR DE LAUDO SIMPLES (ABAS 1 a 6)
+# 5. GERADOR DE LAUDO SIMPLES
 # =========================================================
 def gerar_relatorio_unificado(dados_concreto, lista_dados_granulometria):
     buffer = io.BytesIO()
@@ -136,6 +140,7 @@ def gerar_relatorio_unificado(dados_concreto, lista_dados_granulometria):
 if 'peneiras_ativas' not in st.session_state: st.session_state.peneiras_ativas = []
 if 'massas_retidas' not in st.session_state: st.session_state.massas_retidas = {}
 
+# LISTA OFICIAL PRÉ-PREENCHIDA DE 2019 ATÉ 2026
 if 'lista_periodos_adv' not in st.session_state:
     st.session_state.lista_periodos_adv = [
         {"id": 0, "ini": date(2019, 1, 1), "fim": date(2019, 12, 31)},
@@ -147,7 +152,8 @@ if 'lista_periodos_adv' not in st.session_state:
         {"id": 6, "ini": date(2025, 1, 1), "fim": date(2025, 12, 31)},
         {"id": 7, "ini": date(2026, 1, 1), "fim": date.today()},
     ]
-if 'proximo_id_periodo' not in st.session_state: st.session_state.proximo_id_periodo = 8
+if 'proximo_id_periodo' not in st.session_state:
+    st.session_state.proximo_id_periodo = 8
 
 # =========================================================
 # 7. AS 7 ABAS DO SISTEMA
@@ -270,7 +276,7 @@ with tab3: st.info("Utilize a Guia '🧠 Inteligência (Gêmeo Digital)' para an
 with tab4: st.info("Módulo em desenvolvimento.")
 with tab5: st.info("Consulte a Guia '🧠 Inteligência (Gêmeo Digital)' para os novos KPIs e Dashboards.")
 with tab6:
-    st.header("Emissão de Laudos Rápidos")
+    st.header("Emissão de Laudos (PDF Integrado)")
     if not df_conc.empty:
         opcoes_c = {f"{r['id_ensaio']} | {r['tipo_material']} ({r['data_moldagem'].strftime('%d/%m/%Y')})": r.to_dict() for _, r in df_conc.iterrows()}
         esc = st.selectbox("Selecione o Lote de Concreto:", list(opcoes_c.keys()))
@@ -281,16 +287,16 @@ with tab6:
             st.download_button("📥 Baixar Laudo Integrado", data=gerar_relatorio_unificado(dados_c_alvo, lista_agregados), file_name=f"Laudo_{dados_c_alvo['id_ensaio']}.pdf", mime="application/pdf")
 
 # =========================================================
-# --- ABA 7: INTELIGÊNCIA AVANÇADA E DOSSIÊ TÉCNICO (GÊMEO DIGITAL & PDF) ---
+# --- ABA 7: INTELIGÊNCIA AVANÇADA E DOSSIÊ TÉCNICO ---
 # =========================================================
 with tab7:
-    st.markdown("<h2>🧠 Investigação Técnica: <span class='destaque-verde'>Gêmeo Digital Corporativo</span></h2>", unsafe_allow_html=True)
+    st.markdown("<h2>🧠 Investigação Técnica: <span class='destaque-verde'>Comparador Múltiplo</span></h2>", unsafe_allow_html=True)
     
     if df_gran.empty:
         st.warning("Banco de Granulometria vazio.")
     else:
         st.markdown("<div class='card'>", unsafe_allow_html=True)
-        st.markdown("#### ⚙️ Configuração de Períodos Amostrais")
+        st.markdown("#### ⚙️ Configuração de Períodos")
         col_mat, col_btn_add = st.columns([3, 1])
         materiais_db_reais = sorted(list(df_gran['Material_Real'].dropna().unique()))
         
@@ -306,24 +312,276 @@ with tab7:
                 st.session_state.proximo_id_periodo += 1
                 st.rerun()
 
-        # REENDERIZAR OS INTERVALOS DA SESSÃO COM BOTÃO DE EXCLUIR
+         # REENDERIZAR OS INTERVALOS DA SESSÃO COM BOTÃO DE EXCLUIR
         ids_para_remover = []
         periodos_validados = []
         
+        # Cria colunas responsivas para os períodos
         cols_periodos = st.columns(4)
         for i, periodo in enumerate(st.session_state.lista_periodos_adv):
             with cols_periodos[i % 4]:
                 st.markdown(f"**📅 Intervalo {i+1}**")
                 
+                # Campos de data
                 d_ini = st.date_input("Início", value=periodo['ini'], format="DD/MM/YYYY", key=f"adv_ini_{periodo['id']}")
                 d_fim = st.date_input("Fim", value=periodo['fim'], format="DD/MM/YYYY", key=f"adv_fim_{periodo['id']}")
                 
+                # Botão de remover
                 if st.button("🗑️ Excluir", key=f"del_per_{periodo['id']}", help="Remover este intervalo da análise"):
                     ids_para_remover.append(periodo['id'])
                 else:
+                    # Se não for removido, salva as datas selecionadas
                     periodo['ini'] = d_ini
                     periodo['fim'] = d_fim
                     nome_intervalo = f"{d_ini.strftime('%d/%m/%Y')} - {d_fim.strftime('%d/%m/%Y')}"
                     periodos_validados.append({"nome": nome_intervalo, "ini": d_ini, "fim": d_fim})
 
-        if ids_para_rem
+        # Processar remoções
+        if ids_para_remover:
+            st.session_state.lista_periodos_adv = [p for p in st.session_state.lista_periodos_adv if p['id'] not in ids_para_remover]
+            st.rerun()
+            
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        # PROCESSAMENTO
+        def processar_grupo_adv(df_grupo, nome_grupo):
+            historico = []
+            if df_grupo.empty: return pd.DataFrame(), pd.DataFrame(), None
+            for _, row in df_grupo.sort_values("data_ensaio").iterrows():
+                pens = row['dados_peneiramento']
+                if isinstance(pens, str): pens = json.loads(pens)
+                massa_total = float(row['massa_total_g']) if float(row['massa_total_g']) > 0 else 1
+                rotulo = f"{row['data_ensaio'].strftime('%d/%m/%Y')} | {nome_grupo}"
+                linha_ret = {"Rótulo": rotulo, "Data": row['data_ensaio'], "MF": row['modulo_finura'], "DMC": row['dmc_mm'], "Grupo": nome_grupo}
+                linha_pas = {"Rótulo": rotulo, "Data": row['data_ensaio'], "Grupo": nome_grupo}
+                acumulado = 0
+                for p in PENEIRAS_MESTRA:
+                    p_str = str(p).replace(".0", "") if str(p).endswith(".0") else str(p)
+                    ret = float(pens.get(p_str, 0)); perc_ret = (ret / massa_total) * 100; acumulado += perc_ret
+                    linha_ret[p_str] = perc_ret; linha_pas[p_str] = max(0, 100 - acumulado)
+                historico.append({"ret": linha_ret, "pas": linha_pas})
+            df_ret = pd.DataFrame([h["ret"] for h in historico])
+            df_pas = pd.DataFrame([h["pas"] for h in historico])
+            peneiras_str = [str(p).replace(".0", "") if str(p).endswith(".0") else str(p) for p in PENEIRAS_MESTRA]
+            media_ret = df_ret[peneiras_str].mean()
+            resumo = {"Nome": nome_grupo, "MF_Medio": df_ret['MF'].mean(), "DMC_Medio": df_ret['DMC'].mean(), "Pico_Peneira": media_ret.idxmax(), "Pico_Retencao": media_ret.max(), "Qtd": len(df_grupo)}
+            return df_ret, df_pas, resumo
+
+        df_mat_adv = df_gran[df_gran['Material_Real'] == mat_sel_adv]
+        dados_processados = []
+        
+        for p in periodos_validados:
+            df_p = df_mat_adv[(df_mat_adv['data_ensaio'].dt.date >= p['ini']) & (df_mat_adv['data_ensaio'].dt.date <= p['fim'])]
+            df_r, df_pa, res = processar_grupo_adv(df_p, p['nome'])
+            if res:
+                dados_processados.append({"resumo": res, "df_ret": df_r, "df_pas": df_pa, "ini": p['ini'], "fim": p['fim']})
+            else:
+                st.warning(f"⚠️ O intervalo {p['nome']} não possui ensaios para '{mat_sel_adv}'. Foi omitido do gráfico.")
+
+        if not dados_processados:
+            st.error("Nenhum dado encontrado para os parâmetros selecionados.")
+        else:
+            peneiras_str_all = [str(p).replace(".0", "") if str(p).endswith(".0") else str(p) for p in PENEIRAS_MESTRA]
+            ret_full = pd.concat([d['df_ret'] for d in dados_processados])
+            media_full = ret_full[peneiras_str_all].mean()
+            serie_peneiras = media_full[media_full > 0.05].index.tolist()
+
+            norma_alvo = None
+            mat_lower = mat_sel_adv.lower()
+            if "areia" in mat_lower or "pó" in mat_lower or "miúdo" in mat_lower: norma_alvo = "Areia"
+            elif "brita 0" in mat_lower or "#0" in mat_lower: norma_alvo = "Brita 0"
+            elif "brita 1" in mat_lower or "#1" in mat_lower: norma_alvo = "Brita 1"
+
+            def gerar_laudo_tecnico(lista_dados, material, norma, serie_p):
+                texto = f"Este laudo apresenta a análise granulométrica e o comportamento evolutivo do material <b>{material}</b>, "
+                texto += f"cruzando {len(lista_dados)} intervalos temporais distintos com um volume total de {sum(d['resumo']['Qtd'] for d in lista_dados)} ensaios. "
+                texto += "A conformidade foi aferida segundo os limites de distribuição estabelecidos pela norma ABNT NBR 7211.<br/><br/>"
+                
+                if len(lista_dados) < 2:
+                    texto += "<b>Análise Singular:</b> Como apenas um intervalo de datas retornou dados, a análise foca no enquadramento normativo estático."
+                    return texto
+                
+                p_base = lista_dados[0]
+                p_alvo = lista_dados[-1]
+                delta_mf = p_alvo['resumo']['MF_Medio'] - p_base['resumo']['MF_Medio']
+                
+                ret_base = p_base['df_ret'][serie_p].mean()
+                ret_alvo = p_alvo['df_ret'][serie_p].mean()
+                diff_ret = ret_alvo - ret_base
+                gap_peneira = diff_ret.abs().idxmax()
+                val_gap = diff_ret[gap_peneira]
+                
+                texto += "<b>Análise de Variância e Causa Raiz:</b><br/>"
+                if delta_mf > 0.15:
+                    texto += f"Verificou-se um <b>significativo engrossamento estrutural</b> da amostra (ΔMF = {delta_mf:+.2f}). "
+                    texto += f"O maior desvio granulométrico (gap) encontra-se localizado na malha de <b>{gap_peneira} mm</b>, que sofreu um acréscimo de retenção de {val_gap:+.1f}%.<br/>"
+                    texto += "<b>Causas Mecânicas/Geológicas Prováveis:</b> 1) Desgaste avançado dos revestimentos do britador; 2) Ruptura parcial da tela de classificação na peneira vibratória; 3) Abertura acidental do CSS do britador."
+                elif delta_mf < -0.15:
+                    texto += f"Verificou-se um <b>significativo afinamento estrutural</b> da amostra (ΔMF = {delta_mf:+.2f}). "
+                    texto += f"O principal gap granulométrico afeta a malha de <b>{gap_peneira} mm</b>, com um desvio de retenção de {val_gap:+.1f}%.<br/>"
+                    texto += "<b>Causas Mecânicas/Geológicas Prováveis:</b> 1) Mudança na frente de lavra alcançando rocha mais friável; 2) Fechamento excessivo do britador; 3) Cegamento das malhas inferiores da peneira."
+                else:
+                    texto += f"A estabilidade morfométrica do material foi preservada (Variação ínfima de ΔMF = {delta_mf:+.2f}). "
+                    texto += "Não há evidências de desgaste acentuado de equipamento ou alteração severa na rocha matriz."
+                return texto
+
+            texto_dossie = gerar_laudo_tecnico(dados_processados, mat_sel_adv, norma_alvo, serie_peneiras)
+
+            st.markdown("## 🧠 Laudo Técnico e Causa Raiz")
+            st.markdown(f"<div class='parecer-tecnico'>{texto_dossie}</div>", unsafe_allow_html=True)
+            
+            # TABELA COMPARATIVA GERAL
+            st.markdown("## 📋 Quadro Comparativo e Enquadramento (NBR 7211)")
+            tabela_final = []
+            colunas_df = ["Malha (mm)", "Norma Mín (%)", "Norma Máx (%)"] + [d['resumo']['Nome'] for d in dados_processados] + ["Status Final"]
+            
+            for p in serie_peneiras:
+                linha = {"Malha (mm)": p}
+                n_min, n_max = "-", "-"
+                if norma_alvo and norma_alvo in LIMITES_NORMA and p in LIMITES_NORMA[norma_alvo]:
+                    n_min = LIMITES_NORMA[norma_alvo][p][0]
+                    n_max = LIMITES_NORMA[norma_alvo][p][1]
+                
+                linha["Norma Mín (%)"] = n_min
+                linha["Norma Máx (%)"] = n_max
+                val_atual = 0
+                for d in dados_processados:
+                    val = d['df_pas'][p].mean()
+                    linha[d['resumo']['Nome']] = f"{val:.1f}"
+                    val_atual = val
+                
+                status = "Sem Norma"
+                if n_min != "-" and n_max != "-":
+                    if n_min <= val_atual <= n_max: status = "✅ Conforme"
+                    elif val_atual < n_min: status = "🚨 Falha (Abaixo)"
+                    else: status = "🚨 Falha (Acima)"
+                linha["Status Final"] = status
+                tabela_final.append(linha)
+
+            st.dataframe(pd.DataFrame(tabela_final), use_container_width=True, hide_index=True)
+
+            # GRÁFICOS
+            col_curva, col_bar = st.columns([1.5, 1])
+            cores_p = px.colors.qualitative.Set1
+            
+            with col_curva:
+                st.markdown("<div class='card'><h3>📐 Envelope Granulométrico Múltiplo</h3></div>", unsafe_allow_html=True)
+                fig_cur = go.Figure()
+                if norma_alvo and norma_alvo in LIMITES_NORMA:
+                    p_n = [p for p in serie_peneiras if p in LIMITES_NORMA[norma_alvo]]
+                    n_min = [LIMITES_NORMA[norma_alvo][p][0] for p in p_n]
+                    n_max = [LIMITES_NORMA[norma_alvo][p][1] for p in p_n]
+                    fig_cur.add_trace(go.Scatter(x=p_n, y=n_max, mode='lines', line=dict(color='#84cc16', dash='dash'), name='Teto Norma'))
+                    fig_cur.add_trace(go.Scatter(x=p_n, y=n_min, mode='lines', fill='tonexty', fillcolor='rgba(132, 204, 22, 0.1)', line=dict(color='#84cc16', dash='dash'), name='Piso Norma'))
+
+                for idx, d in enumerate(dados_processados):
+                    fig_cur.add_trace(go.Scatter(x=serie_peneiras, y=d['df_pas'][serie_peneiras].mean().values, mode='lines+markers', line=dict(color=cores_p[idx % len(cores_p)], width=3), name=d['resumo']['Nome']))
+                fig_cur.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(title="Peneiras (mm)", autorange="reversed", type="category"), yaxis=dict(title="% Passante Acumulada", range=[0, 105]), height=400, font=dict(color='white'), margin=dict(l=0, r=0, t=10, b=0), hovermode="x unified")
+                st.plotly_chart(fig_cur, use_container_width=True)
+
+            with col_bar:
+                st.markdown("<div class='card'><h3>📊 Retenção por Malha (%)</h3></div>", unsafe_allow_html=True)
+                fig_bar = go.Figure()
+                for idx, d in enumerate(dados_processados):
+                    fig_bar.add_trace(go.Bar(x=[f"{p}mm" for p in serie_peneiras], y=d['df_ret'][serie_peneiras].mean().values, name=d['resumo']['Nome'], marker_color=cores_p[idx % len(cores_p)]))
+                fig_bar.update_layout(barmode='group', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_title="Peneiras (mm)", yaxis_title="% Massa Retida", height=400, font=dict(color='white'), margin=dict(l=0, r=0, t=10, b=0), legend=dict(x=0.01, y=0.99))
+                st.plotly_chart(fig_bar, use_container_width=True)
+
+            # =========================================================
+            # MOTOR PDF ACADÊMICO
+            # =========================================================
+            def gerar_pdf_academico():
+                buffer = io.BytesIO()
+                doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=1.5*cm, leftMargin=1.5*cm, topMargin=1.5*cm, bottomMargin=1.5*cm)
+                els, sty = [], getSampleStyleSheet()
+                
+                t_st = ParagraphStyle('Title', parent=sty['Heading1'], fontSize=16, textColor=colors.HexColor("#1A365D"), alignment=TA_CENTER, spaceAfter=20, fontName='Helvetica-Bold')
+                h_st = ParagraphStyle('Header', parent=sty['Heading2'], fontSize=12, textColor=colors.HexColor("#2B6CB0"), spaceBefore=15, spaceAfter=10, fontName='Helvetica-Bold')
+                p_st = ParagraphStyle('BodyText', parent=sty['Normal'], fontSize=10, textColor=colors.black, leading=14, spaceAfter=10, alignment=TA_JUSTIFY)
+                
+                els.append(Paragraph("LAUDO TÉCNICO DE AUDITORIA GRANULOMÉTRICA", t_st))
+                els.append(Paragraph(f"<b>Material Auditado:</b> {mat_sel_adv.upper()} | <b>Emissão:</b> {date.today().strftime('%d/%m/%Y')}", p_st))
+                els.append(Paragraph("<b>Diretrizes Técnicas:</b> ABNT NBR 7211 - Agregados para Concreto", p_st))
+                els.append(Spacer(1, 0.5*cm))
+                
+                els.append(Paragraph("1. PARECER TÉCNICO E DIAGNÓSTICO DE CAUSA RAIZ", h_st))
+                texto_limpo = texto_dossie.replace('<b>', '<font name="Helvetica-Bold">').replace('</b>', '</font>').replace('<br/>', '<br/> ')
+                els.append(Paragraph(texto_limpo, p_st))
+                
+                els.append(Paragraph("2. QUADRO COMPARATIVO E CONFORMIDADE NORMATIVA", h_st))
+                t_dados = [colunas_df]
+                for row in tabela_final:
+                    t_dados.append([row[c] for c in colunas_df])
+                
+                largura_total = 18*cm
+                larguras = [2.5*cm, 2.5*cm, 2.5*cm]
+                larg_periodo = (largura_total - 7.5*cm - 3*cm) / len(dados_processados)
+                for _ in dados_processados: larguras.append(larg_periodo)
+                larguras.append(3*cm)
+                
+                t_kpis = Table(t_dados, colWidths=larguras)
+                t_kpis.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#1A365D")),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, -1), 8),
+                    ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#F7FAFC"))
+                ]))
+                els.append(t_kpis)
+                els.append(Spacer(1, 1*cm))
+                
+                els.append(Paragraph("3. REPRESENTAÇÃO GRÁFICA DO DESEMPENHO", h_st))
+                
+                ret_pdf_full = pd.concat([d['df_ret'] for d in dados_processados]).sort_values("Data")
+                
+                plt.style.use('default')
+                fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 9))
+                
+                if norma_alvo and norma_alvo in LIMITES_NORMA:
+                    p_n = [p for p in serie_peneiras if p in LIMITES_NORMA[norma_alvo]]
+                    n_mi = [LIMITES_NORMA[norma_alvo][p][0] for p in p_n]
+                    n_ma = [LIMITES_NORMA[norma_alvo][p][1] for p in p_n]
+                    ax1.fill_between(p_n, n_mi, n_ma, color='green', alpha=0.15, label='Zona ABNT NBR 7211')
+                
+                for idx, d in enumerate(dados_processados):
+                    ax1.plot(serie_peneiras, d['df_pas'][serie_peneiras].mean().values, linewidth=2, label=d['resumo']['Nome'])
+                
+                ax1.set_title('Distribuição Granulométrica (% Passante)', fontweight='bold', fontsize=10)
+                ax1.set_xlabel('Abertura da Malha (mm)', fontsize=9)
+                ax1.set_ylabel('% Passante Acumulada', fontsize=9)
+                ax1.set_ylim([0, 105])
+                ax1.invert_xaxis()
+                ax1.grid(True, linestyle=':', alpha=0.7)
+                ax1.legend(fontsize=8)
+                
+                if not ret_pdf_full.empty:
+                    ax2.plot(ret_pdf_full['Data'], ret_pdf_full['MF'], color='maroon', marker='.', linewidth=1)
+                    ax2.set_title('Comportamento Histórico do Módulo de Finura', fontweight='bold', fontsize=10)
+                    ax2.set_xlabel('Cronologia', fontsize=9)
+                    ax2.set_ylabel('Módulo de Finura (Adimensional)', fontsize=9)
+                    ax2.grid(True, linestyle=':', alpha=0.7)
+                    fig.autofmt_xdate(rotation=45)
+                
+                plt.tight_layout()
+                img_buf = io.BytesIO()
+                plt.savefig(img_buf, format='png', dpi=200, bbox_inches='tight')
+                img_buf.seek(0)
+                plt.close()
+                
+                els.append(Image(img_buf, width=17*cm, height=19*cm))
+                
+                els.append(Spacer(1, 1.5*cm))
+                sig_style = ParagraphStyle('Signature', parent=sty['Normal'], alignment=TA_CENTER, fontSize=10)
+                els.append(Paragraph("____________________________________________________", sig_style))
+                els.append(Paragraph("<b>Davi da Silva Apolinário</b><br/>Encarregado de Fogo / Responsável Técnico<br/>CREA-MG 433115", sig_style))
+                
+                doc.build(els)
+                buffer.seek(0)
+                return buffer
+
+            st.markdown("---")
+            if st.button("🖨️ EMITIR LAUDO TÉCNICO ACADÊMICO (PDF)", type="primary", use_container_width=True):
+                with st.spinner("Compilando diagnósticos, tabelas ABNT e estruturando laudo oficial..."):
+                    st.download_button("📥 Clique Aqui para Baixar o Documento PDF", data=gerar_pdf_academico(), file_name=f"Laudo_Tecnico_{mat_sel_adv.replace(' ', '_')}.
