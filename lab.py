@@ -644,3 +644,4 @@ with tab7:
                         file_name=nome_arquivo, 
                         mime="application/pdf"
                     )
+
