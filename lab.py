@@ -799,8 +799,7 @@ with tab7:
                     fig_bar.add_trace(go.Bar(x=[f"{p}mm" for p in serie_peneiras], y=d['df_ret'][serie_peneiras].mean().values, name=d['resumo']['Nome'], marker_color=cores_p[idx % len(cores_p)]))
                 fig_bar.update_layout(barmode='group', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_title="Peneiras (mm)", yaxis_title="% Massa Retida", height=400, font=dict(color='white'), margin=dict(l=0, r=0, t=10, b=0), legend=dict(x=0.01, y=0.99))
                 st.plotly_chart(fig_bar, use_container_width=True)
-
-            # =========================================================
+# =========================================================
             # MOTOR DE GERAÇÃO PDF EXECUTIVO (GÊMEO DIGITAL, KPIs E ANÁLISE)
             # =========================================================
             def gerar_pdf_academico():
@@ -882,4 +881,60 @@ with tab7:
                 
                 # Ajusta o estilo para parecer corporativo e limpo no PDF
                 plt.style.use('bmh')
+                fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 7.5))
+                fig.patch.set_facecolor('#ffffff')
                 
+                if norma_alvo and norma_alvo in LIMITES_NORMA:
+                    p_n = [p for p in serie_peneiras if p in LIMITES_NORMA[norma_alvo]]
+                    n_mi = [LIMITES_NORMA[norma_alvo][p][0] for p in p_n]
+                    n_ma = [LIMITES_NORMA[norma_alvo][p][1] for p in p_n]
+                    ax1.fill_between(p_n, n_mi, n_ma, color='#84cc16', alpha=0.15, label='Fuso Teórico ABNT NBR 7211')
+                
+                for d in dados_processados:
+                    ax1.plot(serie_peneiras, d['df_pas'][serie_peneiras].mean().values, marker='o', linewidth=2, label=d['resumo']['Nome'])
+                
+                ax1.set_title('Envelope Granulométrico Contínuo (% Passante)', fontweight='bold', fontsize=9, loc='left', color='#1e293b')
+                ax1.set_xlabel('Malha da Peneira (mm)', fontsize=8)
+                ax1.set_ylabel('% Passante', fontsize=8)
+                ax1.set_ylim([0, 105])
+                ax1.invert_xaxis()
+                ax1.grid(True, linestyle='--', alpha=0.6)
+                ax1.legend(fontsize=7, loc='lower left')
+                
+                if not ret_pdf_full.empty:
+                    ax2.plot(ret_pdf_full['Data'], ret_pdf_full['MF'], color='#3b82f6', marker='.', linewidth=1.5, label="Variação Módulo de Finura")
+                    ax2.axhline(y=mf_global, color='#ef4444', linestyle='--', linewidth=1, label=f"Média Histórica Global ({mf_global:.2f})")
+                    ax2.set_title('Cronologia Analítica de Desvios (Módulo de Finura)', fontweight='bold', fontsize=9, loc='left', color='#1e293b')
+                    ax2.set_ylabel('MF (Adimensional)', fontsize=8)
+                    ax2.grid(True, linestyle='--', alpha=0.6)
+                    ax2.legend(fontsize=7, loc='upper left')
+                    fig.autofmt_xdate(rotation=30)
+                
+                plt.tight_layout()
+                img_buf = io.BytesIO()
+                plt.savefig(img_buf, format='png', dpi=250, bbox_inches='tight')
+                img_buf.seek(0)
+                plt.close()
+                
+                els.append(Image(img_buf, width=17*cm, height=16*cm))
+                
+                # ASSINATURA TÉCNICA
+                els.append(Spacer(1, 1*cm))
+                sig_style = ParagraphStyle('Signature', parent=sty['Normal'], alignment=TA_CENTER, fontSize=9)
+                els.append(Paragraph("____________________________________________________", sig_style))
+                els.append(Paragraph("<b>Davi da Silva Apolinário</b><br/>Encarregado de Fogo / LIMS Master & Developer<br/>CREA-MG 433115", sig_style))
+                
+                doc.build(els)
+                buffer.seek(0)
+                return buffer
+
+            st.markdown("---")
+            if st.button("🖨️ EMITIR LAUDO EXECUTIVO (PDF)", type="primary", use_container_width=True):
+                with st.spinner("O algoritmo estrutural está compilando diagnósticos operacionais, renderizando o Gêmeo Digital e as normativas da ABNT. Aguarde..."):
+                    nome_arquivo = f"Laudo_DigitalTwin_{mat_sel_adv.replace(' ', '_')}.pdf"
+                    st.download_button(
+                        label="📥 Descarregar Laudo Técnico e Plano de Ação", 
+                        data=gerar_pdf_academico(), 
+                        file_name=nome_arquivo, 
+                        mime="application/pdf"
+                    )
