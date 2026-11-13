@@ -1,6 +1,7 @@
 streamlit
 pandas
+numpy
 plotly
-jinja2
+matplotlib
 reportlab
-weasyprint
+supabase
