@@ -325,7 +325,7 @@ with tab7:
                 if st.button("🗑️ Excluir", key=f"del_per_{periodo['id']}", help="Remover este intervalo da análise"):
                     ids_para_remover.append(periodo['id'])
                 else:
-         _{periodo['id']}", help="Remover este intervalo da análise"):
+          _{periodo['id']}", help="Remover este intervalo da análise"):
                     ids_para_remover.append(periodo['id'])
                 else:
                     # Se não for removido, salva as datas selecionadas
