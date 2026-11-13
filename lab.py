@@ -581,4 +581,14 @@ with tab7:
                 buffer.seek(0)
                 return buffer
 
-            st.download_button("📥 Clique Aqui para Baixar o Documento PDF", data=gerar_pdf_academico(), file_name=f"Laudo_Tecnico_{mat_sel_adv.replace(' ', '_')}.
+                        st.markdown("---")
+            if st.button("🖨️ EMITIR LAUDO EXECUTIVO (PDF)", type="primary", use_container_width=True):
+                with st.spinner("O algoritmo estrutural está compilando diagnósticos operacionais, renderizando o Gêmeo Digital e as normativas da ABNT. Aguarde..."):
+                    nome_arquivo = f"Laudo_DigitalTwin_{mat_sel_adv.replace(' ', '_')}.pdf"
+                    st.download_button(
+                        label="📥 Descarregar Laudo Técnico e Plano de Ação", 
+                        data=gerar_pdf_academico(), 
+                        file_name=nome_arquivo, 
+                        mime="application/pdf"
+                    )
+                    
