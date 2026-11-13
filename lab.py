@@ -581,7 +581,4 @@ with tab7:
                 buffer.seek(0)
                 return buffer
 
-            st.markdown("---")
-            if st.button("🖨️ EMITIR LAUDO TÉCNICO ACADÊMICO (PDF)", type="primary", use_container_width=True):
-                with st.spinner("Compilando diagnósticos, tabelas ABNT e estruturando laudo oficial..."):
-                    st.download_button("📥 Clique Aqui para Baixar o Documento PDF", data=gerar_pdf_academico(), file_name=f"Laudo_Tecnico_{mat_sel_adv.replace(' ', '_')}.
+            st.download_button("📥 Clique Aqui para Baixar o Documento PDF", data=gerar_pdf_academico(), file_name=f"Laudo_Tecnico_{mat_sel_adv.replace(' ', '_')}.
