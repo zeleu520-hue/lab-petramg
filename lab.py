@@ -297,7 +297,7 @@ with tab6:
 # --- ABA 7: INTELIGÊNCIA AVANÇADA E DOSSIÊ TÉCNICO (GÊMEO DIGITAL & PDF) ---
 # =========================================================
 with tab7:
-    st.markdown("<h2>🧠 Investigação Técnica: <span class='destaque-verde'>Gêmeo Digital Corporativo</span></h2>", unsafe_allow_html=True)
+    st.markdown("<h2>🧠 Investigação Técnica: <span class='destaque-verde'>Gráfico</span></h2>", unsafe_allow_html=True)
     
     if df_gran.empty:
         st.warning("Banco de Granulometria vazio.")
@@ -628,7 +628,7 @@ with tab7:
                 els.append(Spacer(1, 1*cm))
                 sig_style = ParagraphStyle('Signature', parent=sty['Normal'], alignment=TA_CENTER, fontSize=9)
                 els.append(Paragraph("____________________________________________________", sig_style))
-                els.append(Paragraph("<b>Davi da Silva Apolinário</b><br/>Encarregado de Fogo / LIMS Master & Developer<br/>CREA-MG 433115", sig_style))
+                els.append(Paragraph("<b>Davi da Silva Apolinário</b><br/>Laboratorista / DSA Soluções<br/>sig_style))
                 
                 doc.build(els)
                 buffer.seek(0)
